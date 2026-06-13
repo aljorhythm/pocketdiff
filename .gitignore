@@ -1,2 +1,6 @@
 node_modules/
 *.log
+
+# playwright agent cli scratch
+.playwright-cli/
+.playwright/

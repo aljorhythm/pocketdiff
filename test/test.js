@@ -60,8 +60,8 @@ assert(dirs.includes('src'), 'src group exists');
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');
 assert(html.includes('width=device-width'), 'has viewport meta');
 assert(html.includes('id="filter"'), 'has filter input');
-assert(/open data-path="src\/app\.js"/.test(html), 'app.js open');
-assert(/class="file" data-path="package-lock\.json"/.test(html), 'lockfile not open');
+assert(/id="f\d+" open data-path="src\/app\.js"/.test(html), 'app.js open');
+assert(/class="file" id="f\d+" data-path="package-lock\.json"/.test(html), 'lockfile not open');
 assert(html.includes('renamed'), 'rename badge present');
 assert(html.includes('Binary file'), 'binary handled');
 assert(!/https?:\/\/[^"']+\.(?:js|css)/.test(html), 'no external CDN assets');
@@ -77,5 +77,13 @@ assert(
   (html.match(/data-view="preview"/g) || []).length === 1,
   'only the markdown file has a preview tab'
 );
+
+// top file list / jump index
+assert(html.includes('class="filelist"'), 'file list present');
+assert(
+  (html.match(/class="fl-item"/g) || []).length === parser.parse(SAMPLE).length,
+  'one list entry per file'
+);
+assert(/class="badge md"/.test(html), 'markdown flagged in the list');
 
 console.log('All tests passed.');
