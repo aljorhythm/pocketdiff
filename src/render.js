@@ -141,10 +141,15 @@ function renderFile(file) {
       '<table class="diff">' + file.hunks.map(renderHunk).join('') + '</table>';
     if (isMarkdown(file.path)) {
       const preview = renderMarkdownPreview(file);
+      const id = file.id;
+      // Pure-CSS tabs (radio + label) so the toggle works even when the file is
+      // opened in a JS-disabled viewer (iOS Quick Look, in-app previews, etc.).
       body =
+        `<input type="radio" class="vtoggle diff" name="v-${id}" id="diff-${id}" checked>` +
+        `<input type="radio" class="vtoggle prev" name="v-${id}" id="prev-${id}">` +
         '<div class="vtabs">' +
-        '<button type="button" class="vtab active" data-view="diff">Diff</button>' +
-        '<button type="button" class="vtab" data-view="preview">Preview</button>' +
+        `<label class="vtab tab-diff" for="diff-${id}">Diff</label>` +
+        `<label class="vtab tab-prev" for="prev-${id}">Preview</label>` +
         '</div>' +
         table +
         `<div class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div>`;
@@ -350,14 +355,16 @@ details.filelist{background:var(--panel)}
 .fl-name .dir{color:var(--muted)}
 .fl-item .counts{margin-left:auto}
 .badge.md{color:#fff;background:var(--accent);border-color:var(--accent)}
-/* markdown diff/preview toggle */
+/* markdown diff/preview toggle — pure CSS (no JS needed) */
+.vtoggle{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .vtabs{display:flex;gap:4px;padding:8px 10px 0;border-top:1px solid var(--border)}
 .vtab{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:16px;
   background:var(--panel);color:var(--muted);cursor:pointer}
-.vtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.vtoggle.diff:checked ~ .vtabs .tab-diff,
+.vtoggle.prev:checked ~ .vtabs .tab-prev{background:var(--accent);color:#fff;border-color:var(--accent)}
 .preview{display:none;padding:4px 16px 12px;border-top:1px solid var(--border)}
-.file.preview-on table.diff{display:none}
-.file.preview-on .preview{display:block}
+.vtoggle.prev:checked ~ .preview{display:block}
+.vtoggle.prev:checked ~ table.diff{display:none}
 .preview-note{color:var(--muted);font-size:12px;border-top:1px solid var(--border);
   padding-top:8px;margin:12px 0 0}
 .markdown{line-height:1.6;word-wrap:break-word}
@@ -436,16 +443,6 @@ const JS = `
   });
   document.getElementById('collapse').addEventListener('click',function(){
     files.forEach(function(f){f.open=false;});
-  });
-  document.addEventListener('click',function(e){
-    var tab=e.target.closest&&e.target.closest('.vtab');
-    if(!tab)return;
-    var file=tab.closest('details.file');
-    var preview=tab.getAttribute('data-view')==='preview';
-    file.classList.toggle('preview-on',preview);
-    file.querySelectorAll('.vtab').forEach(function(t){
-      t.classList.toggle('active',t.getAttribute('data-view')===tab.getAttribute('data-view'));
-    });
   });
 })();
 `;

@@ -68,13 +68,16 @@ assert(!/https?:\/\/[^"']+\.(?:js|css)/.test(html), 'no external CDN assets');
 
 // word-level highlighting on the edited markdown line
 assert(html.includes('class="wq"'), 'word-level highlight present');
-// markdown gets a Preview tab + rendered preview
-assert(html.includes('data-view="preview"'), 'markdown preview tab present');
+// markdown gets a pure-CSS Preview tab + rendered preview
+assert(/class="vtab tab-prev"/.test(html), 'markdown preview tab present');
+assert(/class="vtoggle prev"/.test(html), 'pure-css preview radio present');
 assert(/class="preview markdown"/.test(html), 'markdown preview block present');
 assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview');
+// the toggle must not depend on JS (works in JS-disabled viewers)
+assert(!html.includes('data-view'), 'no JS-only preview handler markup');
 // non-markdown files have no preview tab
 assert(
-  (html.match(/data-view="preview"/g) || []).length === 1,
+  (html.match(/class="vtab tab-prev"/g) || []).length === 1,
   'only the markdown file has a preview tab'
 );
 
