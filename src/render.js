@@ -133,7 +133,7 @@ function renderFile(file) {
 
   let body;
   if (file.binary) {
-    body = '<div class="empty">Binary file — no textual diff.</div>';
+    body = '<div class="empty">Binary file (no textual diff).</div>';
   } else if (!file.hunks || file.hunks.length === 0) {
     body = '<div class="empty">No textual changes.</div>';
   } else {
@@ -198,7 +198,7 @@ function renderMarkdownBar(files) {
         `<a class="md-chip" href="#prev-${f.id}" data-path="${esc(f.path)}">${esc(basename(f.path))}</a>`
     )
     .join('');
-  return `<div class="mdbar"><span class="mdbar-label">📝 Markdown</span><div class="md-chips">${chips}</div></div>`;
+  return `<div class="mdbar"><span class="mdbar-label">Markdown</span><div class="md-chips">${chips}</div></div>`;
 }
 
 // A jump-list at the top so infrequent files (e.g. markdown) aren't buried.
@@ -278,10 +278,13 @@ ${groups.map(renderGroup).join('')}
 
 const CSS = `
 :root{
-  --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d0d7de; --panel:#f6f8fa;
+  /* off-white canvas, off-black ink, one locked accent */
+  --bg:#fcfcfb; --fg:#1f2328; --muted:#656d76; --border:#d8dde3; --panel:#f3f4f6;
   --add-bg:#e6ffec; --add-fg:#1a7f37; --del-bg:#ffebe9; --del-fg:#cf222e;
   --add-num:#2da44e22; --del-num:#cf222e22; --code:#1f2328; --accent:#0969da;
   --add-word:#aceebb; --del-word:#ffc1b8;
+  /* one corner-radius system: cards / controls / pills */
+  --r-card:12px; --r-ctl:8px; --r-pill:999px;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -290,6 +293,9 @@ const CSS = `
     --add-num:#3fb95022; --del-num:#f8514922; --code:#e6edf3; --accent:#58a6ff;
     --add-word:#2ea04366; --del-word:#f8514966;
   }
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important;scroll-behavior:auto !important}
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -303,14 +309,15 @@ body{margin:0;background:var(--bg);color:var(--fg);
 .summary{color:var(--muted);font-size:13px}
 .controls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 #filter{flex:1 1 160px;min-width:140px;font-size:16px;padding:8px 10px;
-  border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--fg)}
+  border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--bg);color:var(--fg)}
 .controls button{font-size:13px;padding:8px 10px;border:1px solid var(--border);
-  border-radius:8px;background:var(--panel);color:var(--fg);cursor:pointer;white-space:nowrap}
-.controls button:active{background:var(--border)}
-.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  border-radius:var(--r-ctl);background:var(--panel);color:var(--fg);cursor:pointer;white-space:nowrap;
+  transition:transform .08s ease}
+.controls button:active{background:var(--border);transform:scale(.97)}
+.controls button.active{background:var(--accent);color:#f7fbff;border-color:var(--accent)}
 .nomatch{color:var(--muted);padding:8px 2px;font-size:13px}
 main{padding:8px}
-details{border:1px solid var(--border);border-radius:10px;margin:8px 0;overflow:hidden;background:var(--bg)}
+details{border:1px solid var(--border);border-radius:var(--r-card);margin:8px 0;overflow:hidden;background:var(--bg)}
 details.group{background:var(--panel)}
 details.group>summary{font-weight:600}
 details.group>details.file{margin:8px}
@@ -329,7 +336,7 @@ details[open]>summary .caret{transform:rotate(45deg)}
 .add{color:var(--add-fg);font-weight:600}
 .del{color:var(--del-fg);font-weight:600}
 .badge{font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;
-  border-radius:20px;border:1px solid var(--border);color:var(--muted);flex:none}
+  border-radius:var(--r-pill);border:1px solid var(--border);color:var(--muted);flex:none}
 .badge.add{color:var(--add-fg)} .badge.del{color:var(--del-fg)}
 .badge.rename,.badge.bin,.badge.noise,.badge.large{color:var(--accent)}
 .rename-info{padding:6px 12px;color:var(--muted);font-family:ui-monospace,monospace;
@@ -366,25 +373,25 @@ details.filelist{background:var(--panel)}
 .fl-group{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
   color:var(--muted);padding:8px 8px 2px;text-transform:none}
 .fl-item{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--fg);
-  padding:8px;border-radius:8px}
+  padding:8px;border-radius:var(--r-ctl)}
 .fl-item:active{background:var(--border)}
 .fl-name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;min-width:0}
 .fl-name .dir{color:var(--muted)}
 .fl-item .counts{margin-left:auto}
-.badge.md{color:#fff;background:var(--accent);border-color:var(--accent)}
+.badge.md{color:#f7fbff;background:var(--accent);border-color:var(--accent)}
 /* markdown bar at the top */
-.mdbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);
-  border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:8px 0}
-.mdbar-label{font-size:12px;font-weight:600;color:var(--muted)}
+.mdbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--panel);
+  border:1px solid var(--border);border-radius:var(--r-card);padding:10px 12px;margin:8px 0}
+.mdbar-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .md-chips{display:flex;flex-wrap:wrap;gap:6px}
 .md-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
   text-decoration:none;color:var(--accent);background:var(--bg);border:1px solid var(--accent);
-  border-radius:16px;padding:4px 10px}
-.md-chip:active{background:var(--accent);color:#fff}
+  border-radius:var(--r-pill);padding:4px 10px;transition:transform .08s ease}
+.md-chip:active{background:var(--accent);color:var(--bg);transform:scale(.97)}
 /* markdown diff/preview toggle — pure anchor/:target (no JS needed) */
 .vtabs{display:flex;gap:4px;padding:8px 10px 0;border-top:1px solid var(--border)}
-.vtab{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:16px;
+.vtab{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:var(--r-pill);
   background:var(--panel);color:var(--muted);text-decoration:none;cursor:pointer}
 .vtab:active{background:var(--border)}
 .preview{display:none;padding:4px 16px 12px;border-top:1px solid var(--border);scroll-margin-top:128px}
