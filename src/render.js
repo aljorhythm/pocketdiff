@@ -112,7 +112,7 @@ function render(rawFiles, opts = {}) {
 <title>${esc(title)}</title>
 <style>${CSS}</style>
 </head>
-<body>
+<body class="wrap">
 <header class="topbar">
   <div class="title">
     <strong>${esc(title)}</strong>
@@ -121,7 +121,7 @@ function render(rawFiles, opts = {}) {
   </div>
   <div class="controls">
     <input id="filter" type="search" placeholder="Filter by filename…" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <button id="wrap" type="button" title="Toggle line wrap">Wrap</button>
+    <button id="wrap" type="button" class="active" aria-pressed="true" title="Toggle line wrap">Wrap</button>
     <button id="expand" type="button">Expand all</button>
     <button id="collapse" type="button">Collapse all</button>
   </div>
@@ -165,6 +165,7 @@ body{margin:0;background:var(--bg);color:var(--fg);
 .controls button{font-size:13px;padding:8px 10px;border:1px solid var(--border);
   border-radius:8px;background:var(--panel);color:var(--fg);cursor:pointer;white-space:nowrap}
 .controls button:active{background:var(--border)}
+.controls button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .nomatch{color:var(--muted);padding:8px 2px;font-size:13px}
 main{padding:8px}
 details{border:1px solid var(--border);border-radius:10px;margin:8px 0;overflow:hidden;background:var(--bg)}
@@ -205,11 +206,10 @@ tr.ins .sign{color:var(--add-fg)}
 tr.del td.code{background:var(--del-bg)} tr.del td.ln{background:var(--del-num)}
 tr.del .sign{color:var(--del-fg)}
 tr.hunk-head td{color:var(--accent);background:var(--panel);font-size:12px}
-body.wrap td.code{white-space:pre-wrap;word-break:break-word}
-body.wrap table.diff{display:table}
+body.wrap table.diff{display:table;table-layout:fixed;width:100%;overflow-x:visible}
 body.wrap table.diff tr{display:table-row}
-body.wrap td.ln{display:table-cell;position:static}
-body.wrap td.code{display:table-cell}
+body.wrap td.ln{display:table-cell;position:static;vertical-align:top}
+body.wrap td.code{display:table-cell;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 footer{color:var(--muted);text-align:center;font-size:12px;padding:16px;
   padding-bottom:max(16px,env(safe-area-inset-bottom))}
 .hidden{display:none !important}
@@ -243,7 +243,9 @@ const JS = `
   }
   filter.addEventListener('input',apply);
   document.getElementById('wrap').addEventListener('click',function(){
-    document.body.classList.toggle('wrap');
+    var on=document.body.classList.toggle('wrap');
+    this.classList.toggle('active',on);
+    this.setAttribute('aria-pressed',String(on));
   });
   document.getElementById('expand').addEventListener('click',function(){
     files.forEach(function(f){if(!f.classList.contains('hidden'))f.open=true;});
