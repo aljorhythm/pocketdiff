@@ -41,6 +41,9 @@ index 333ccc..444ddd 100644
 `;
 
 const files = classify(parser.parse(SAMPLE));
+files.forEach((f, i) => {
+  f.id = 'f' + i; // mirror the id assignment render() does internally
+});
 const html = render(parser.parse(SAMPLE), { title: 'Test review' });
 
 // classification
@@ -68,18 +71,25 @@ assert(!/https?:\/\/[^"']+\.(?:js|css)/.test(html), 'no external CDN assets');
 
 // word-level highlighting on the edited markdown line
 assert(html.includes('class="wq"'), 'word-level highlight present');
-// markdown gets a pure-CSS Preview tab + rendered preview
-assert(/class="vtab tab-prev"/.test(html), 'markdown preview tab present');
-assert(/class="vtoggle prev"/.test(html), 'pure-css preview radio present');
-assert(/class="preview markdown"/.test(html), 'markdown preview block present');
+// markdown gets a pure anchor/:target Preview tab + rendered preview
+const mdFile = files.find((f) => f.path === 'docs/README.md');
+assert(html.includes(`<a class="vtab" href="#prev-${mdFile.id}">Preview</a>`), 'preview tab present');
+assert(html.includes(`id="prev-${mdFile.id}" class="preview markdown"`), 'preview block present');
 assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview');
-// the toggle must not depend on JS (works in JS-disabled viewers)
-assert(!html.includes('data-view'), 'no JS-only preview handler markup');
-// non-markdown files have no preview tab
-assert(
-  (html.match(/class="vtab tab-prev"/g) || []).length === 1,
-  'only the markdown file has a preview tab'
+// markdown files surfaced in a top bar, linking to the preview
+assert(html.includes('class="mdbar"'), 'markdown bar present');
+assert(html.includes(`class="md-chip" href="#prev-${mdFile.id}"`), 'md chip links to preview');
+// the file-list entry for markdown also opens the preview
+assert(html.includes(`class="fl-item" href="#prev-${mdFile.id}"`), 'md list entry opens preview');
+// no markdown bar when there are no markdown files
+const { render: render2 } = require('../src/render');
+const noMd = render2(
+  require('gitdiff-parser').parse(
+    'diff --git a/a.js b/a.js\nindex 1..2 100644\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-a\n+b\n'
+  ),
+  {}
 );
+assert(!noMd.includes('class="mdbar"'), 'no markdown bar without markdown files');
 
 // top file list / jump index
 assert(html.includes('class="filelist"'), 'file list present');

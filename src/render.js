@@ -142,17 +142,17 @@ function renderFile(file) {
     if (isMarkdown(file.path)) {
       const preview = renderMarkdownPreview(file);
       const id = file.id;
-      // Pure-CSS tabs (radio + label) so the toggle works even when the file is
-      // opened in a JS-disabled viewer (iOS Quick Look, in-app previews, etc.).
+      // Pure anchor/:target tabs — no JS — so the Preview can be opened both by
+      // the in-file tab and by a jump link from the top, even in JS-disabled
+      // viewers (iOS Quick Look, in-app file previews, etc.). The preview is
+      // placed before the table so `:target ~ table.diff` can hide the diff.
       body =
-        `<input type="radio" class="vtoggle diff" name="v-${id}" id="diff-${id}" checked>` +
-        `<input type="radio" class="vtoggle prev" name="v-${id}" id="prev-${id}">` +
         '<div class="vtabs">' +
-        `<label class="vtab tab-diff" for="diff-${id}">Diff</label>` +
-        `<label class="vtab tab-prev" for="prev-${id}">Preview</label>` +
+        `<a class="vtab" href="#${id}">Diff</a>` +
+        `<a class="vtab" href="#prev-${id}">Preview</a>` +
         '</div>' +
-        table +
-        `<div class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div>`;
+        `<div id="prev-${id}" class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div>` +
+        table;
     } else {
       body = table;
     }
@@ -176,12 +176,29 @@ function renderFile(file) {
 function fileListEntry(file) {
   const name = basename(file.path);
   const dir = file.dir ? file.dir + '/' : '';
-  const md = isMarkdown(file.path) ? '<span class="badge md">md</span>' : '';
-  return `<a class="fl-item" href="#${file.id}" data-path="${esc(file.path)}">
+  const markdown = isMarkdown(file.path);
+  const md = markdown ? '<span class="badge md">md</span>' : '';
+  // markdown jumps straight to its rendered preview; others to the file section
+  const href = markdown ? `#prev-${file.id}` : `#${file.id}`;
+  return `<a class="fl-item" href="${href}" data-path="${esc(file.path)}">
     <span class="fl-name"><span class="dir">${esc(dir)}</span>${esc(name)}</span>
     ${md}${fileBadge(file)}
     <span class="counts"><span class="add">+${file.additions}</span> <span class="del">−${file.deletions}</span></span>
   </a>`;
+}
+
+// A prominent bar of markdown files at the very top — they're infrequent and
+// easy to miss. Tapping one opens its rendered preview directly (pure :target).
+function renderMarkdownBar(files) {
+  const mds = files.filter((f) => isMarkdown(f.path));
+  if (!mds.length) return '';
+  const chips = mds
+    .map(
+      (f) =>
+        `<a class="md-chip" href="#prev-${f.id}" data-path="${esc(f.path)}">${esc(basename(f.path))}</a>`
+    )
+    .join('');
+  return `<div class="mdbar"><span class="mdbar-label">📝 Markdown</span><div class="md-chips">${chips}</div></div>`;
 }
 
 // A jump-list at the top so infrequent files (e.g. markdown) aren't buried.
@@ -249,6 +266,7 @@ function render(rawFiles, opts = {}) {
   <div id="nomatch" class="nomatch" hidden>No files match the filter.</div>
 </header>
 <main>
+${renderMarkdownBar(files)}
 ${renderFileList(groups, files.length)}
 ${groups.map(renderGroup).join('')}
 </main>
@@ -355,16 +373,23 @@ details.filelist{background:var(--panel)}
 .fl-name .dir{color:var(--muted)}
 .fl-item .counts{margin-left:auto}
 .badge.md{color:#fff;background:var(--accent);border-color:var(--accent)}
-/* markdown diff/preview toggle — pure CSS (no JS needed) */
-.vtoggle{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+/* markdown bar at the top */
+.mdbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);
+  border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:8px 0}
+.mdbar-label{font-size:12px;font-weight:600;color:var(--muted)}
+.md-chips{display:flex;flex-wrap:wrap;gap:6px}
+.md-chip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  text-decoration:none;color:var(--accent);background:var(--bg);border:1px solid var(--accent);
+  border-radius:16px;padding:4px 10px}
+.md-chip:active{background:var(--accent);color:#fff}
+/* markdown diff/preview toggle — pure anchor/:target (no JS needed) */
 .vtabs{display:flex;gap:4px;padding:8px 10px 0;border-top:1px solid var(--border)}
 .vtab{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:16px;
-  background:var(--panel);color:var(--muted);cursor:pointer}
-.vtoggle.diff:checked ~ .vtabs .tab-diff,
-.vtoggle.prev:checked ~ .vtabs .tab-prev{background:var(--accent);color:#fff;border-color:var(--accent)}
-.preview{display:none;padding:4px 16px 12px;border-top:1px solid var(--border)}
-.vtoggle.prev:checked ~ .preview{display:block}
-.vtoggle.prev:checked ~ table.diff{display:none}
+  background:var(--panel);color:var(--muted);text-decoration:none;cursor:pointer}
+.vtab:active{background:var(--border)}
+.preview{display:none;padding:4px 16px 12px;border-top:1px solid var(--border);scroll-margin-top:128px}
+.preview:target{display:block}
+.preview:target ~ table.diff{display:none}
 .preview-note{color:var(--muted);font-size:12px;border-top:1px solid var(--border);
   padding-top:8px;margin:12px 0 0}
 .markdown{line-height:1.6;word-wrap:break-word}
@@ -420,12 +445,21 @@ const JS = `
     nomatch.hidden=any;
   }
   filter.addEventListener('input',apply);
-  // jump from the file list to a (possibly collapsed) file section
+  // jump from the file list to a (possibly collapsed) file section.
+  // markdown preview links (#prev-*) are left to native :target/anchor behavior.
   document.addEventListener('click',function(e){
-    var link=e.target.closest&&e.target.closest('a.fl-item');
+    var link=e.target.closest&&e.target.closest('a.fl-item,a.md-chip');
     if(!link)return;
+    var href=link.getAttribute('href');
+    if(href.indexOf('#prev-')===0){
+      // ensure the file is expanded, then let the browser handle :target + scroll
+      var prev=document.getElementById(href.slice(1));
+      var d=prev&&prev.closest('details');
+      while(d){d.open=true;d=d.parentElement&&d.parentElement.closest('details');}
+      return;
+    }
     e.preventDefault();
-    var el=document.getElementById(link.getAttribute('href').slice(1));
+    var el=document.getElementById(href.slice(1));
     if(!el)return;
     var grp=el.closest('details.group');
     if(grp)grp.open=true;
