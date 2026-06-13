@@ -4,6 +4,7 @@ const assert = require('assert');
 const parser = require('gitdiff-parser');
 const { render } = require('../src/render');
 const { classify, group } = require('../src/group');
+const { toDiffUrl, classifyInput } = require('../src/input');
 
 const SAMPLE = `diff --git a/src/app.js b/src/app.js
 index 1234567..89abcde 100644
@@ -98,5 +99,30 @@ assert(
   'one list entry per file'
 );
 assert(/class="badge md"/.test(html), 'markdown flagged in the list');
+
+// input auto-detection
+assert.equal(
+  toDiffUrl('https://github.com/owner/repo/pull/42'),
+  'https://github.com/owner/repo/pull/42.diff',
+  'PR url -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://github.com/o/r/pull/42/files'),
+  'https://github.com/o/r/pull/42.diff',
+  'PR /files url -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://github.com/o/r/compare/a...b'),
+  'https://github.com/o/r/compare/a...b.diff',
+  'compare url -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://example.com/x.diff'),
+  'https://example.com/x.diff',
+  'non-github url left as-is'
+);
+assert.equal(classifyInput('https://example.com/x.diff').kind, 'url', 'url detected');
+assert.equal(classifyInput('main...HEAD').kind, 'git', 'git range detected');
+assert.equal(classifyInput(__filename).kind, 'file', 'existing file detected');
 
 console.log('All tests passed.');

@@ -36,14 +36,29 @@ fixes exactly that.
 # pipe a diff in (the primary path)
 git diff main...HEAD | npx pocketdiff -o review.html
 
-# or let pocketdiff run git for you
-npx pocketdiff -o review.html -- main...HEAD
+# or pass an input — auto-detected as a git range, a local file, or a URL
+npx pocketdiff -o review.html main...HEAD
+npx pocketdiff -o review.html changes.diff
+npx pocketdiff -o review.html https://github.com/owner/repo/pull/42
 
 # default: diff the working tree
 npx pocketdiff -o review.html
 ```
 
 Then open `review.html` on your phone or tablet.
+
+### Input (auto-detected, best effort)
+
+A single positional argument is classified automatically:
+
+| Input | Treated as |
+|-------|-----------|
+| `https://…` | a URL to fetch — GitHub PR / commit / compare pages map to their raw `.diff`; any raw diff URL is fetched directly |
+| an existing file | a local unified-diff file |
+| anything else | arguments for `git diff` (e.g. `main...HEAD`, `HEAD~3`) |
+| (omitted) | piped stdin if present, otherwise the working tree |
+
+For private GitHub URLs, set `GITHUB_TOKEN` (or `GH_TOKEN`).
 
 ### Options
 
