@@ -1,1 +1,66 @@
-# mobile-diff
+# pocketdiff
+
+Turn a `git diff` into a **single, self-contained HTML file** built for reviewing
+code **on the go** — phone or tablet. No server, no build step, no internet needed
+to open it. Just pipe a diff in and AirDrop / download the result to your device.
+
+Reviewing agent-generated diffs on GitHub mobile is painful: lines wrap badly,
+lockfiles drown out real changes, and there's no way to filter or group. pocketdiff
+fixes exactly that.
+
+## Features
+
+- **Mobile- & tablet-friendly** — fluid layout, big tap targets, code scrolls inside
+  its own box so the page never overflows. Roomier on tablets/landscape.
+- **Noise collapsed by default** — lockfiles (`package-lock.json`, `pnpm-lock.yaml`,
+  `go.sum`, `Cargo.lock`, …), minified/generated files, source maps and snapshots
+  start collapsed. Real source starts open.
+- **Grouped by folder** — files are clustered by directory (a strong proxy for
+  "related files") under collapsible group headers.
+- **Live filename filter** — type to instantly narrow the file list.
+- **Wrap toggle, expand/collapse all**, dark mode (follows your system).
+- **Self-contained** — all CSS/JS inlined, zero external requests. Works offline.
+
+## Usage
+
+```bash
+# pipe a diff in (the primary path)
+git diff main...HEAD | npx pocketdiff -o review.html
+
+# or let pocketdiff run git for you
+npx pocketdiff -o review.html -- main...HEAD
+
+# default: diff the working tree
+npx pocketdiff -o review.html
+```
+
+Then open `review.html` on your phone or tablet.
+
+### Options
+
+| Flag | Description |
+|------|-------------|
+| `-o, --output <file>` | Write HTML to a file (default: stdout) |
+| `-t, --title <text>`  | Title shown in the header |
+| `-h, --help`          | Show help |
+
+Anything after `--` is passed straight to `git diff`.
+
+## How it works
+
+1. Parse the unified diff with [`gitdiff-parser`](https://www.npmjs.com/package/gitdiff-parser)
+   (handles renames, new/deleted, binary, modes).
+2. Classify each file (noise / large / binary) and group by directory.
+3. Render to a self-contained HTML string — native `<details>` for zero-JS collapse,
+   ~40 lines of vanilla JS for the filter and toggles.
+
+## Develop
+
+```bash
+npm install
+npm test
+```
+
+## License
+
+MIT

@@ -1,0 +1,32 @@
+{
+  "name": "pocketdiff",
+  "version": "0.1.0",
+  "description": "Turn a git diff into a self-contained, mobile- and tablet-friendly HTML file for reviewing code on the go.",
+  "bin": {
+    "pocketdiff": "bin/cli.js"
+  },
+  "main": "src/render.js",
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "diff",
+    "git",
+    "code-review",
+    "html",
+    "mobile",
+    "tablet"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "gitdiff-parser": "^0.3.1"
+  }
+}
