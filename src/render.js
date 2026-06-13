@@ -1,6 +1,9 @@
 'use strict';
 
+const MarkdownIt = require('markdown-it');
 const { classify, group } = require('./group');
+
+const md = new MarkdownIt({ html: false, linkify: true, breaks: false });
 
 function esc(s) {
   return String(s)
@@ -15,6 +18,53 @@ function basename(path) {
   return i === -1 ? path : path.slice(i + 1);
 }
 
+function isMarkdown(path) {
+  return /\.(md|markdown|mdx)$/i.test(path);
+}
+
+// Token-level diff between two lines. Returns escaped HTML for each side with
+// changed tokens wrapped in <span class="wq">. Uses an LCS over word/space/punct
+// tokens — enough to make prose & markdown edits readable without being fancy.
+function tokenize(s) {
+  return s.match(/\s+|[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g) || [];
+}
+
+function wordDiff(a, b) {
+  const A = tokenize(a);
+  const B = tokenize(b);
+  const m = A.length;
+  const n = B.length;
+  const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] =
+        A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  let i = 0;
+  let j = 0;
+  let oa = '';
+  let ob = '';
+  const mark = (t) => `<span class="wq">${esc(t)}</span>`;
+  while (i < m && j < n) {
+    if (A[i] === B[j]) {
+      oa += esc(A[i]);
+      ob += esc(B[j]);
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      oa += mark(A[i]);
+      i++;
+    } else {
+      ob += mark(B[j]);
+      j++;
+    }
+  }
+  while (i < m) oa += mark(A[i++]);
+  while (j < n) ob += mark(B[j++]);
+  return { oa, ob };
+}
+
 function fileBadge(file) {
   if (file.type === 'rename') return '<span class="badge rename">renamed</span>';
   if (file.type === 'add' || file.oldPath === '/dev/null')
@@ -27,26 +77,50 @@ function fileBadge(file) {
   return '';
 }
 
+function row(cls, sign, num, codeHtml) {
+  return `<tr class="${cls}"><td class="ln">${num == null ? '' : num}</td><td class="code"><span class="sign">${sign}</span>${codeHtml}</td></tr>`;
+}
+
 function renderHunk(hunk) {
-  let rows = '';
-  rows += `<tr class="hunk-head"><td class="ln"></td><td class="code">${esc(hunk.content)}</td></tr>`;
-  for (const c of hunk.changes) {
-    let cls;
-    let num;
-    if (c.type === 'insert') {
-      cls = 'ins';
-      num = c.lineNumber;
-    } else if (c.type === 'delete') {
-      cls = 'del';
-      num = c.lineNumber;
+  let rows = `<tr class="hunk-head"><td class="ln"></td><td class="code">${esc(hunk.content)}</td></tr>`;
+  const ch = hunk.changes;
+  for (let k = 0; k < ch.length; ) {
+    if (ch[k].type === 'delete' || ch[k].type === 'insert') {
+      // Gather a run of deletes immediately followed by a run of inserts so we
+      // can highlight word-level changes between matched line pairs.
+      const dels = [];
+      const ins = [];
+      while (k < ch.length && ch[k].type === 'delete') dels.push(ch[k++]);
+      while (k < ch.length && ch[k].type === 'insert') ins.push(ch[k++]);
+      const pairs = Math.min(dels.length, ins.length);
+      const diffs = [];
+      for (let p = 0; p < pairs; p++) diffs.push(wordDiff(dels[p].content, ins[p].content));
+      dels.forEach((d, p) =>
+        (rows += row('del', '-', d.lineNumber, p < pairs ? diffs[p].oa : esc(d.content)))
+      );
+      ins.forEach((d, p) =>
+        (rows += row('ins', '+', d.lineNumber, p < pairs ? diffs[p].ob : esc(d.content)))
+      );
     } else {
-      cls = 'ctx';
-      num = c.newLineNumber;
+      const c = ch[k++];
+      rows += row('ctx', ' ', c.newLineNumber, esc(c.content));
     }
-    const sign = c.type === 'insert' ? '+' : c.type === 'delete' ? '-' : ' ';
-    rows += `<tr class="${cls}"><td class="ln">${num == null ? '' : num}</td><td class="code"><span class="sign">${sign}</span>${esc(c.content)}</td></tr>`;
   }
   return rows;
+}
+
+// Build a rendered-markdown preview from the *new* side of the hunks. A diff only
+// carries changed hunks (not the whole file), so this previews changed sections.
+function renderMarkdownPreview(file) {
+  const blocks = [];
+  for (const hunk of file.hunks) {
+    const lines = hunk.changes
+      .filter((c) => c.type !== 'delete')
+      .map((c) => c.content);
+    if (lines.length) blocks.push(lines.join('\n'));
+  }
+  if (!blocks.length) return '';
+  return md.render(blocks.join('\n\n'));
 }
 
 function renderFile(file) {
@@ -63,8 +137,20 @@ function renderFile(file) {
   } else if (!file.hunks || file.hunks.length === 0) {
     body = '<div class="empty">No textual changes.</div>';
   } else {
-    body =
+    const table =
       '<table class="diff">' + file.hunks.map(renderHunk).join('') + '</table>';
+    if (isMarkdown(file.path)) {
+      const preview = renderMarkdownPreview(file);
+      body =
+        '<div class="vtabs">' +
+        '<button type="button" class="vtab active" data-view="diff">Diff</button>' +
+        '<button type="button" class="vtab" data-view="preview">Preview</button>' +
+        '</div>' +
+        table +
+        `<div class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div>`;
+    } else {
+      body = table;
+    }
   }
 
   const open = file.collapsed ? '' : ' open';
@@ -141,12 +227,14 @@ const CSS = `
   --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d0d7de; --panel:#f6f8fa;
   --add-bg:#e6ffec; --add-fg:#1a7f37; --del-bg:#ffebe9; --del-fg:#cf222e;
   --add-num:#2da44e22; --del-num:#cf222e22; --code:#1f2328; --accent:#0969da;
+  --add-word:#aceebb; --del-word:#ffc1b8;
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --border:#30363d; --panel:#161b22;
     --add-bg:#12261e; --add-fg:#3fb950; --del-bg:#25171c; --del-fg:#f85149;
     --add-num:#3fb95022; --del-num:#f8514922; --code:#e6edf3; --accent:#58a6ff;
+    --add-word:#2ea04366; --del-word:#f8514966;
   }
 }
 *{box-sizing:border-box}
@@ -205,6 +293,9 @@ tr.ins td.code{background:var(--add-bg)} tr.ins td.ln{background:var(--add-num)}
 tr.ins .sign{color:var(--add-fg)}
 tr.del td.code{background:var(--del-bg)} tr.del td.ln{background:var(--del-num)}
 tr.del .sign{color:var(--del-fg)}
+.wq{border-radius:3px}
+tr.ins .wq{background:var(--add-word)}
+tr.del .wq{background:var(--del-word)}
 tr.hunk-head td{color:var(--accent);background:var(--panel);font-size:12px}
 body.wrap table.diff{display:table;table-layout:fixed;width:100%;overflow-x:visible}
 body.wrap table.diff tr{display:table-row}
@@ -213,6 +304,28 @@ body.wrap td.code{display:table-cell;white-space:pre-wrap;overflow-wrap:anywhere
 footer{color:var(--muted);text-align:center;font-size:12px;padding:16px;
   padding-bottom:max(16px,env(safe-area-inset-bottom))}
 .hidden{display:none !important}
+/* markdown diff/preview toggle */
+.vtabs{display:flex;gap:4px;padding:8px 10px 0;border-top:1px solid var(--border)}
+.vtab{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:16px;
+  background:var(--panel);color:var(--muted);cursor:pointer}
+.vtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.preview{display:none;padding:4px 16px 12px;border-top:1px solid var(--border)}
+.file.preview-on table.diff{display:none}
+.file.preview-on .preview{display:block}
+.preview-note{color:var(--muted);font-size:12px;border-top:1px solid var(--border);
+  padding-top:8px;margin:12px 0 0}
+.markdown{line-height:1.6;word-wrap:break-word}
+.markdown h1,.markdown h2,.markdown h3{line-height:1.3;margin:.8em 0 .4em}
+.markdown h1{font-size:1.5em} .markdown h2{font-size:1.3em} .markdown h3{font-size:1.1em}
+.markdown pre{background:var(--panel);padding:10px;border-radius:8px;overflow-x:auto}
+.markdown code{background:var(--panel);padding:1px 5px;border-radius:5px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
+.markdown pre code{padding:0;background:none}
+.markdown blockquote{margin:.5em 0;padding-left:12px;border-left:3px solid var(--border);color:var(--muted)}
+.markdown table{border-collapse:collapse;display:block;overflow-x:auto;max-width:100%}
+.markdown th,.markdown td{border:1px solid var(--border);padding:5px 9px}
+.markdown img{max-width:100%}
+.markdown a{color:var(--accent)}
 /* tablet / landscape: roomier code, wider gutter */
 @media (min-width:768px){
   main{max-width:980px;margin:0 auto}
@@ -253,6 +366,16 @@ const JS = `
   });
   document.getElementById('collapse').addEventListener('click',function(){
     files.forEach(function(f){f.open=false;});
+  });
+  document.addEventListener('click',function(e){
+    var tab=e.target.closest&&e.target.closest('.vtab');
+    if(!tab)return;
+    var file=tab.closest('details.file');
+    var preview=tab.getAttribute('data-view')==='preview';
+    file.classList.toggle('preview-on',preview);
+    file.querySelectorAll('.vtab').forEach(function(t){
+      t.classList.toggle('active',t.getAttribute('data-view')===tab.getAttribute('data-view'));
+    });
   });
 })();
 `;

@@ -17,9 +17,18 @@ fixes exactly that.
   start collapsed. Real source starts open.
 - **Grouped by folder** — files are clustered by directory (a strong proxy for
   "related files") under collapsible group headers.
+- **Word-level highlighting** — when a line is edited, the exact words that changed
+  are highlighted (great for prose & markdown, helpful everywhere).
+- **Markdown preview** — `.md`/`.markdown`/`.mdx` files get a **Diff / Preview**
+  toggle that renders the changed sections as real markdown (headings, tables, bold)
+  via `markdown-it`, pre-rendered at build time so the output stays offline.
 - **Live filename filter** — type to instantly narrow the file list.
-- **Wrap toggle, expand/collapse all**, dark mode (follows your system).
+- **Word wrap on by default**, plus toggle, expand/collapse all, dark mode.
 - **Self-contained** — all CSS/JS inlined, zero external requests. Works offline.
+
+> Note: a unified diff only contains changed hunks (plus a little context), not the
+> whole file — so the markdown preview shows the *changed sections*, not the full
+> rendered document.
 
 ## Usage
 

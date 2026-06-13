@@ -30,6 +30,14 @@ diff --git a/logo.png b/logo.png
 new file mode 100644
 index 0000000..1111111
 Binary files /dev/null and b/logo.png differ
+diff --git a/docs/README.md b/docs/README.md
+index 333ccc..444ddd 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -1,3 +1,3 @@
+ # Title
+-A simple service.
++A **realtime** service.
 `;
 
 const files = classify(parser.parse(SAMPLE));
@@ -57,5 +65,17 @@ assert(/class="file" data-path="package-lock\.json"/.test(html), 'lockfile not o
 assert(html.includes('renamed'), 'rename badge present');
 assert(html.includes('Binary file'), 'binary handled');
 assert(!/https?:\/\/[^"']+\.(?:js|css)/.test(html), 'no external CDN assets');
+
+// word-level highlighting on the edited markdown line
+assert(html.includes('class="wq"'), 'word-level highlight present');
+// markdown gets a Preview tab + rendered preview
+assert(html.includes('data-view="preview"'), 'markdown preview tab present');
+assert(/class="preview markdown"/.test(html), 'markdown preview block present');
+assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview');
+// non-markdown files have no preview tab
+assert(
+  (html.match(/data-view="preview"/g) || []).length === 1,
+  'only the markdown file has a preview tab'
+);
 
 console.log('All tests passed.');
