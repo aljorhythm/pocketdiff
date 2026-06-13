@@ -82,8 +82,13 @@ Anything after `--` is passed straight to `git diff`.
 
 ```bash
 npm install
-npm test
+npm test            # unit tests (renderer, grouping, input detection)
+npm run test:visual # browser harness (Playwright, dev-only); needs:
+                    #   npx playwright install chromium
 ```
+
+Playwright is a `devDependency` used only for the browser test harness — it is
+**not** part of the published package (which ships just `bin/` and `src/`).
 
 ## License
 

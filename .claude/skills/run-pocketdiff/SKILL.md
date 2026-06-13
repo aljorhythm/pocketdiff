@@ -67,6 +67,17 @@ node test/test.js
 Unit-level checks of the renderer, grouping, markdown preview, and input
 auto-detection. Prints `All tests passed.`
 
+Optional browser harness (dev only — Playwright is a devDependency, never part of
+the published package; first run needs `npx playwright install chromium`):
+
+```bash
+npm run test:visual
+```
+
+It renders the generated HTML in headless Chromium and verifies the markdown
+preview opens with JS disabled and the filter works with JS on; screenshots land
+in `test/screenshots/`.
+
 ## Gotchas
 
 - **The output is built to work with JavaScript disabled.** Mobile preview

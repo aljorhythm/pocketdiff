@@ -12,7 +12,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node test/test.js"
+    "test": "node test/test.js",
+    "test:visual": "node test/visual.mjs"
   },
   "engines": {
     "node": ">=16"
@@ -29,5 +30,8 @@
   "dependencies": {
     "gitdiff-parser": "^0.3.1",
     "markdown-it": "^14.2.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }
