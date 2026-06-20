@@ -77,11 +77,13 @@ so you can generate a review straight from a Claude session. Install it from thi
 repo with the [skills.sh](https://www.skills.sh) CLI:
 
 ```bash
-npx skills add aljorhythm/pocketdiff
+npx -y skills add -g aljorhythm/pocketdiff
 ```
 
-That copies `.claude/skills/run-pocketdiff/` into your project's `.claude/skills/`.
-Then invoke it in Claude Code with `/run-pocketdiff`.
+This copies `.claude/skills/run-pocketdiff/` into your global `~/.claude/skills/`
+so it's available in every project. (`-y` skips the npx download prompt; `-g`
+installs globally — drop it to install into the current project's
+`.claude/skills/` instead.) Then invoke it in Claude Code with `/run-pocketdiff`.
 
 > The skill installs straight from this GitHub repo — it does not require the npm
 > package. (There is no `npx skill install`; `npx skills add <owner>/<repo>` is the
