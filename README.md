@@ -70,6 +70,23 @@ For private GitHub URLs, set `GITHUB_TOKEN` (or `GH_TOKEN`).
 
 Anything after `--` is passed straight to `git diff`.
 
+## Claude Code skill
+
+This repo ships a [Claude Code](https://code.claude.com) skill (`run-pocketdiff`)
+so you can generate a review straight from a Claude session. Install it from this
+repo with the [skills.sh](https://www.skills.sh) CLI:
+
+```bash
+npx skills add aljorhythm/pocketdiff
+```
+
+That copies `.claude/skills/run-pocketdiff/` into your project's `.claude/skills/`.
+Then invoke it in Claude Code with `/run-pocketdiff`.
+
+> The skill installs straight from this GitHub repo — it does not require the npm
+> package. (There is no `npx skill install`; `npx skills add <owner>/<repo>` is the
+> ecosystem-standard installer.)
+
 ## How it works
 
 1. Parse the unified diff with [`gitdiff-parser`](https://www.npmjs.com/package/gitdiff-parser)
