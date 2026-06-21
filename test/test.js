@@ -99,6 +99,23 @@ assert(/id="f\d+" open /.test(imgHtml), 'image file is open by default (it is th
 const noImg = render([{ type: 'add', oldPath: '/dev/null', newPath: 'logo.png', hunks: [] }], {});
 assert(noImg.includes('Binary file'), 'binary note when bytes were not resolved');
 
+// spaced filenames: git appends a trailing tab in the +++ line — strip it so the
+// extension is still detected (markdown preview) and the path renders cleanly
+const spaced = render(
+  [
+    {
+      type: 'add',
+      oldPath: '/dev/null',
+      newPath: 'docs/Naming brief.md\t',
+      hunks: [{ content: '@@ -0,0 +1 @@', changes: [{ type: 'insert', content: '# Title', lineNumber: 1 }] }],
+    },
+  ],
+  {}
+);
+assert(spaced.includes('class="preview markdown"'), 'markdown detected despite trailing tab');
+assert(spaced.includes('class="mdbar"'), 'spaced-name markdown surfaced in the bar');
+assert(!/Naming brief\.md\t/.test(spaced), 'trailing tab stripped from the path');
+
 // rendered HTML
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');
 assert(html.includes('width=device-width'), 'has viewport meta');

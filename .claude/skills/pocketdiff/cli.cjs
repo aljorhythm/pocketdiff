@@ -5753,9 +5753,12 @@ var require_group = __commonJS({
       /(^|\/)__generated__\//
     ];
     var LARGE_CHANGE_THRESHOLD = 600;
+    var cleanPath = (p) => typeof p === "string" ? p.split("	")[0] : p;
     function pathOf(file) {
-      if (file.newPath && file.newPath !== "/dev/null") return file.newPath;
-      return file.oldPath || file.newPath || "(unknown)";
+      const np = cleanPath(file.newPath);
+      const op = cleanPath(file.oldPath);
+      if (np && np !== "/dev/null") return np;
+      return op || np || "(unknown)";
     }
     function countChanges(file) {
       let additions = 0;
@@ -5786,6 +5789,8 @@ var require_group = __commonJS({
         const hasImage = !!file.image;
         return {
           ...file,
+          newPath: cleanPath(file.newPath),
+          oldPath: cleanPath(file.oldPath),
           path,
           dir: dirOf(path),
           additions,
@@ -12714,7 +12719,8 @@ function newRev(args) {
 function resolveImages(files, args) {
   const rev = newRev(args);
   for (const f of files) {
-    const path = f.newPath && f.newPath !== "/dev/null" ? f.newPath : null;
+    const raw = f.newPath && f.newPath !== "/dev/null" ? f.newPath : null;
+    const path = raw ? raw.split("	")[0] : null;
     if (!path || f.type === "delete" || !IMAGE_EXT.test(path)) continue;
     let buf = null;
     try {

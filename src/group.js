@@ -30,10 +30,18 @@ const NOISE_PATTERNS = [
 // A file with more than this many changed lines also starts collapsed.
 const LARGE_CHANGE_THRESHOLD = 600;
 
+// Git appends a trailing TAB (and an optional timestamp) after a filename that
+// contains spaces in the `---`/`+++` diff lines, to delimit where the name ends.
+// gitdiff-parser keeps it, which breaks extension checks (`.md`, …) and shows a
+// stray tab in the UI — so strip everything from the first tab on.
+const cleanPath = (p) => (typeof p === 'string' ? p.split('\t')[0] : p);
+
 function pathOf(file) {
   // newPath is "/dev/null" for deletions; fall back to oldPath.
-  if (file.newPath && file.newPath !== '/dev/null') return file.newPath;
-  return file.oldPath || file.newPath || '(unknown)';
+  const np = cleanPath(file.newPath);
+  const op = cleanPath(file.oldPath);
+  if (np && np !== '/dev/null') return np;
+  return op || np || '(unknown)';
 }
 
 function countChanges(file) {
@@ -69,6 +77,8 @@ function classify(files) {
     const hasImage = !!file.image;
     return {
       ...file,
+      newPath: cleanPath(file.newPath),
+      oldPath: cleanPath(file.oldPath),
       path,
       dir: dirOf(path),
       additions,
