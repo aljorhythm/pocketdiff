@@ -196,7 +196,11 @@ function renderFile(file, hi) {
 
   let body;
   if (file.binary) {
-    body = '<div class="empty">Binary file (no textual diff).</div>';
+    // An inlined image thumbnail when the bytes were resolved (local diffs),
+    // otherwise the plain note (a diff carries no binary content).
+    body = file.image
+      ? `<div class="imgpreview"><img src="${file.image}" alt="${esc(basename(file.path))}" loading="lazy"></div>`
+      : '<div class="empty">Binary file (no textual diff).</div>';
   } else if (!file.hunks || file.hunks.length === 0) {
     body = '<div class="empty">No textual changes.</div>';
   } else {
@@ -450,6 +454,9 @@ details.file{border-top:1px solid var(--border);scroll-margin-top:140px;
 .badge.rename,.badge.bin,.badge.noise,.badge.large{color:var(--muted)}
 .rename-info{padding:4px 16px 10px;color:var(--muted);font-family:ui-monospace,monospace;font-size:12px}
 .empty{padding:4px 16px 14px;color:var(--muted)}
+.imgpreview{padding:8px 16px 16px}
+.imgpreview img{max-width:100%;height:auto;border:1px solid var(--border);border-radius:var(--r-ctl);
+  background:repeating-conic-gradient(var(--panel) 0% 25%,transparent 0% 50%) 50%/16px 16px}
 table.diff{width:100%;border-collapse:collapse;
   display:block;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:12.5px;line-height:1.5;-webkit-overflow-scrolling:touch}

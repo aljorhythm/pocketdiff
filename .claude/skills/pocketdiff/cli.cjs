@@ -5783,6 +5783,7 @@ var require_group = __commonJS({
         const noise = isNoise(path);
         const large = changed > LARGE_CHANGE_THRESHOLD;
         const binary = (file.hunks || []).length === 0 && file.type !== "rename";
+        const hasImage = !!file.image;
         return {
           ...file,
           path,
@@ -5793,7 +5794,8 @@ var require_group = __commonJS({
           large,
           binary,
           // collapsed by default when it's noise, very large, or has nothing to show
-          collapsed: noise || large || binary || (file.hunks || []).length === 0
+          // — but an image with a resolved preview IS the content, so keep it open.
+          collapsed: !hasImage && (noise || large || binary || (file.hunks || []).length === 0)
         };
       });
     }
@@ -11981,7 +11983,7 @@ var require_render = __commonJS({
       const renameInfo = file.type === "rename" ? `<div class="rename-info">${esc(file.oldPath)} \u2192 ${esc(file.newPath)}</div>` : "";
       let body;
       if (file.binary) {
-        body = '<div class="empty">Binary file (no textual diff).</div>';
+        body = file.image ? `<div class="imgpreview"><img src="${file.image}" alt="${esc(basename(file.path))}" loading="lazy"></div>` : '<div class="empty">Binary file (no textual diff).</div>';
       } else if (!file.hunks || file.hunks.length === 0) {
         body = '<div class="empty">No textual changes.</div>';
       } else {
@@ -12188,6 +12190,9 @@ details.file{border-top:1px solid var(--border);scroll-margin-top:140px;
 .badge.rename,.badge.bin,.badge.noise,.badge.large{color:var(--muted)}
 .rename-info{padding:4px 16px 10px;color:var(--muted);font-family:ui-monospace,monospace;font-size:12px}
 .empty{padding:4px 16px 14px;color:var(--muted)}
+.imgpreview{padding:8px 16px 16px}
+.imgpreview img{max-width:100%;height:auto;border:1px solid var(--border);border-radius:var(--r-ctl);
+  background:repeating-conic-gradient(var(--panel) 0% 25%,transparent 0% 50%) 50%/16px 16px}
 table.diff{width:100%;border-collapse:collapse;
   display:block;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:12.5px;line-height:1.5;-webkit-overflow-scrolling:touch}
@@ -12675,25 +12680,67 @@ function runGit(args) {
 async function getDiff(opts) {
   if (!process.stdin.isTTY) {
     const piped = readStdin();
-    if (piped.trim()) return piped;
+    if (piped.trim()) return { text: piped, source: { kind: "stdin" } };
   }
   if (opts.args.length === 1) {
     const { kind, value } = classifyInput(opts.args[0]);
-    if (kind === "url") return fetchDiff(value);
-    if (kind === "file") return fs.readFileSync(value, "utf8");
+    if (kind === "url") return { text: await fetchDiff(value), source: { kind: "url" } };
+    if (kind === "file")
+      return { text: fs.readFileSync(value, "utf8"), source: { kind: "file" } };
   }
-  return runGit(opts.args);
+  return { text: runGit(opts.args), source: { kind: "git", args: opts.args } };
+}
+var IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|ico)$/i;
+var IMAGE_MIME = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  bmp: "image/bmp",
+  ico: "image/x-icon"
+};
+var MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+function newRev(args) {
+  const pos = (args || []).filter((a) => !a.startsWith("-"));
+  if (pos.length === 1) {
+    const m = /\.\.\.?(.+)$/.exec(pos[0]);
+    return m ? m[1] : null;
+  }
+  if (pos.length >= 2) return pos[pos.length - 1];
+  return null;
+}
+function resolveImages(files, args) {
+  const rev = newRev(args);
+  for (const f of files) {
+    const path = f.newPath && f.newPath !== "/dev/null" ? f.newPath : null;
+    if (!path || f.type === "delete" || !IMAGE_EXT.test(path)) continue;
+    let buf = null;
+    try {
+      buf = rev ? execFileSync("git", ["show", `${rev}:${path}`], { maxBuffer: MAX_IMAGE_BYTES + 4096 }) : fs.existsSync(path) ? fs.readFileSync(path) : null;
+    } catch {
+      buf = null;
+    }
+    if (buf && buf.length <= MAX_IMAGE_BYTES) {
+      const ext = path.split(".").pop().toLowerCase();
+      const mime = IMAGE_MIME[ext] || "application/octet-stream";
+      f.image = `data:${mime};base64,${buf.toString("base64")}`;
+    }
+  }
 }
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   let diffText;
+  let source;
   try {
-    diffText = await getDiff(opts);
+    ({ text: diffText, source } = await getDiff(opts));
   } catch (e) {
     process.stderr.write("pocketdiff: " + e.message + "\n");
     process.exit(1);
   }
   const files = parser.parse(diffText);
+  if (files && source.kind === "git") resolveImages(files, source.args);
   if (!files || files.length === 0) {
     process.stderr.write(
       "pocketdiff: no changes found in the diff \u2014 the range/URL may be empty, or it was a merge commit shown without a diff. Check the range, or use `git show -m`/`--first-parent`.\n"

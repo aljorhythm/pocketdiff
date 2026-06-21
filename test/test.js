@@ -87,6 +87,18 @@ assert(semHtml.includes('id="groups"'), 'groups container for client re-bucketin
 assert(/data-layer="/.test(semHtml) && /data-domain="/.test(semHtml), 'files carry layer+domain keys');
 assert(semHtml.includes('window.__pd'), 'client gets the layer order');
 
+// image preview: a binary image with resolved bytes renders inline, file open
+const imgHtml = render(
+  [{ type: 'add', oldPath: '/dev/null', newPath: 'assets/logo.png', hunks: [], image: 'data:image/png;base64,AAAA' }],
+  {}
+);
+assert(imgHtml.includes('class="imgpreview"'), 'image preview block present');
+assert(imgHtml.includes('src="data:image/png;base64,AAAA"'), 'image inlined as data URI');
+assert(/id="f\d+" open /.test(imgHtml), 'image file is open by default (it is the content)');
+// no bytes -> the plain binary note (a diff carries no image data)
+const noImg = render([{ type: 'add', oldPath: '/dev/null', newPath: 'logo.png', hunks: [] }], {});
+assert(noImg.includes('Binary file'), 'binary note when bytes were not resolved');
+
 // rendered HTML
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');
 assert(html.includes('width=device-width'), 'has viewport meta');

@@ -66,6 +66,7 @@ function classify(files) {
     const noise = isNoise(path);
     const large = changed > LARGE_CHANGE_THRESHOLD;
     const binary = (file.hunks || []).length === 0 && file.type !== 'rename';
+    const hasImage = !!file.image;
     return {
       ...file,
       path,
@@ -76,7 +77,8 @@ function classify(files) {
       large,
       binary,
       // collapsed by default when it's noise, very large, or has nothing to show
-      collapsed: noise || large || binary || (file.hunks || []).length === 0,
+      // — but an image with a resolved preview IS the content, so keep it open.
+      collapsed: !hasImage && (noise || large || binary || (file.hunks || []).length === 0),
     };
   });
 }
