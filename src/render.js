@@ -270,7 +270,7 @@ function renderFileList(groups, count) {
   const body = groups
     .map(
       (g) =>
-        `<div class="fl-group">${esc(g.dir || '(root)')}</div>` +
+        `<div class="fl-group">${esc(g.label || '(root)')}</div>` +
         g.files.map(fileListEntry).join('')
     )
     .join('');
@@ -282,7 +282,7 @@ function renderFileList(groups, count) {
 }
 
 function renderGroup(g, hi) {
-  const label = g.dir || '(root)';
+  const label = g.label || '(root)';
   const counts = `<span class="add">+${g.additions}</span> <span class="del">−${g.deletions}</span>`;
   return `
 <details class="group" open data-dir="${esc(label)}">
@@ -301,7 +301,7 @@ function render(rawFiles, opts = {}) {
     f.id = 'f' + i;
   });
   const hi = !!opts.highlight;
-  const groups = group(files);
+  const groups = group(files, opts.group);
   const totalAdd = files.reduce((s, f) => s + f.additions, 0);
   const totalDel = files.reduce((s, f) => s + f.deletions, 0);
   const title = opts.title || 'pocketdiff review';

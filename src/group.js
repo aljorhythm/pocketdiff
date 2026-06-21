@@ -81,22 +81,114 @@ function classify(files) {
   });
 }
 
-// Best-effort grouping by directory (a strong proxy for "similar files").
-// Returns [{ dir, files, additions, deletions }] sorted by path.
-function group(files) {
-  const byDir = new Map();
-  for (const file of files) {
-    if (!byDir.has(file.dir)) byDir.set(file.dir, []);
-    byDir.get(file.dir).push(file);
+function baseName(p) {
+  const i = p.lastIndexOf('/');
+  return i === -1 ? p : p.slice(i + 1);
+}
+
+// --- Semantic grouping (crude, heuristic — a useful reorg for review) --------
+
+// "Layer" = architectural role, detected from the file name by keyword. Ordered
+// by priority: the first match wins (so `user.service.test.ts` is a test, not a
+// service). The label order here is also the display order.
+const LAYER_RULES = [
+  ['tests', /(^|[._-])(test|spec)s?([._-]|$)/i],
+  ['migrations', /migration/i],
+  ['controllers', /controller/i],
+  ['routes', /(^|[._-])(route|router)s?([._-]|$)/i],
+  ['handlers', /handler/i],
+  ['middleware', /middleware/i],
+  ['services', /service/i],
+  ['repositories', /(repositor(y|ies)|(^|[._-])repos?([._-]|$))/i],
+  ['models', /(model|entit(y|ies))/i],
+  ['schemas', /schema/i],
+  ['dtos', /(^|[._-])dtos?([._-]|$)/i],
+  ['components', /component/i],
+  ['hooks', /(^|[._-])use[A-Z]|(^|[._-])hooks?([._-]|$)/],
+  ['styles', /\.(css|scss|sass|less)$/i],
+  ['docs', /\.(md|mdx|markdown)$/i],
+  ['types', /(^|[._-])(types?|interfaces?|d)([._-]|$)/i],
+  ['config', /(config|settings)/i],
+  ['utils', /(util|helper)/i],
+];
+const LAYER_ORDER = LAYER_RULES.map((r) => r[0]).concat('other');
+
+function layerOf(path) {
+  const base = baseName(path);
+  for (const [label, re] of LAYER_RULES) if (re.test(base)) return label;
+  return 'other';
+}
+
+// Words that describe a layer/role, stripped when guessing a file's domain.
+const LAYER_WORDS = new Set([
+  'test', 'tests', 'spec', 'specs', 'controller', 'controllers', 'service', 'services',
+  'repository', 'repositories', 'repo', 'repos', 'model', 'models', 'entity', 'entities',
+  'route', 'routes', 'router', 'handler', 'handlers', 'middleware', 'schema', 'schemas',
+  'dto', 'dtos', 'component', 'components', 'hook', 'hooks', 'type', 'types', 'interface',
+  'interfaces', 'config', 'settings', 'util', 'utils', 'helper', 'helpers', 'index',
+  'main', 'app', 'style', 'styles', 'module', 'impl', 'migration', 'migrations',
+]);
+
+// "Domain" = the thing a file is about, guessed from its name by stripping the
+// extension and layer words, then taking the first meaningful token (crudely
+// singularised). So user.service.ts / users.controller.ts / userRepository.ts
+// all key to "user".
+function domainKeyOf(path) {
+  const base = baseName(path).replace(/\.[^.]+$/, '');
+  const tokens = base
+    .split(/[._\-\s]+|(?=[A-Z])/)
+    .map((t) => t.toLowerCase())
+    .filter(Boolean);
+  const sig = tokens.filter((t) => !LAYER_WORDS.has(t) && !/^\d+$/.test(t));
+  let key = sig[0] || tokens[0] || 'misc';
+  key = key.replace(/s$/, '') || key; // crude singularise
+  return key || 'misc';
+}
+
+function bucket(files, keyOf, order, last) {
+  const map = new Map();
+  for (const f of files) {
+    const k = keyOf(f);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(f);
   }
-  const groups = [...byDir.entries()].map(([dir, groupFiles]) => {
-    groupFiles.sort((a, b) => a.path.localeCompare(b.path));
-    const additions = groupFiles.reduce((s, f) => s + f.additions, 0);
-    const deletions = groupFiles.reduce((s, f) => s + f.deletions, 0);
-    return { dir, files: groupFiles, additions, deletions };
+  const groups = [...map.entries()].map(([label, gf]) => {
+    gf.sort((a, b) => a.path.localeCompare(b.path));
+    return {
+      label,
+      files: gf,
+      additions: gf.reduce((s, f) => s + f.additions, 0),
+      deletions: gf.reduce((s, f) => s + f.deletions, 0),
+    };
   });
-  groups.sort((a, b) => a.dir.localeCompare(b.dir));
+  const rank = (l) => {
+    if (order) {
+      const i = order.indexOf(l);
+      return i === -1 ? order.length : i;
+    }
+    return l === last ? 1 : 0;
+  };
+  groups.sort((a, b) => rank(a.label) - rank(b.label) || a.label.localeCompare(b.label));
   return groups;
 }
 
-module.exports = { classify, group, pathOf, isNoise, NOISE_PATTERNS };
+// Group files for display. `mode`:
+//   'dir'    — by directory (default; a strong proxy for "related files")
+//   'layer'  — by architectural role (controllers/services/repositories/…)
+//   'domain' — by the thing they're about (user/order/…), via name similarity
+// Returns [{ label, files, additions, deletions }].
+function group(files, mode = 'dir') {
+  if (mode === 'layer') return bucket(files, (f) => layerOf(f.path), LAYER_ORDER);
+  if (mode === 'domain') return bucket(files, (f) => domainKeyOf(f.path), null, 'misc');
+  return bucket(files, (f) => f.dir, null);
+}
+
+module.exports = {
+  classify,
+  group,
+  pathOf,
+  isNoise,
+  NOISE_PATTERNS,
+  layerOf,
+  domainKeyOf,
+};

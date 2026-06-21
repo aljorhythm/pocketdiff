@@ -25,6 +25,7 @@ Options:
   -t, --title <text>    Title shown in the header
   --highlight           Syntax-highlight code (opt-in; common languages)
   --light, --dark       Force the colour theme (default: follow the system)
+  --group <how>         Group files by: dir (default), layer, or domain
   -h, --help            Show this help
 
 Examples:
@@ -38,7 +39,7 @@ For private GitHub URLs, set GITHUB_TOKEN (or GH_TOKEN).
 `;
 
 function parseArgs(argv) {
-  const opts = { output: null, title: null, highlight: false, theme: null, args: [] };
+  const opts = { output: null, title: null, highlight: false, theme: null, group: 'dir', args: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '-h' || a === '--help') {
@@ -52,6 +53,8 @@ function parseArgs(argv) {
       opts.highlight = true;
     } else if (a === '--light' || a === '--dark') {
       opts.theme = a.slice(2);
+    } else if (a === '--group') {
+      opts.group = argv[++i];
     } else if (a === '--') {
       opts.args.push(...argv.slice(i + 1));
       break;
@@ -209,6 +212,7 @@ async function main() {
     title: opts.title,
     highlight: opts.highlight,
     theme: opts.theme,
+    group: opts.group,
   });
 
   if (opts.output) {
