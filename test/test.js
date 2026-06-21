@@ -103,18 +103,23 @@ assert(/class="badge md"/.test(html), 'markdown flagged in the list');
 // input auto-detection
 assert.equal(
   toDiffUrl('https://github.com/owner/repo/pull/42'),
-  'https://github.com/owner/repo/pull/42.diff',
-  'PR url -> .diff'
+  'https://api.github.com/repos/owner/repo/pulls/42',
+  'PR url -> REST API pulls endpoint'
 );
 assert.equal(
   toDiffUrl('https://github.com/o/r/pull/42/files'),
-  'https://github.com/o/r/pull/42.diff',
-  'PR /files url -> .diff'
+  'https://api.github.com/repos/o/r/pulls/42',
+  'PR /files url -> REST API pulls endpoint'
 );
 assert.equal(
   toDiffUrl('https://github.com/o/r/compare/a...b'),
-  'https://github.com/o/r/compare/a...b.diff',
-  'compare url -> .diff'
+  'https://api.github.com/repos/o/r/compare/a...b',
+  'compare url -> REST API compare endpoint'
+);
+assert.equal(
+  toDiffUrl('https://github.com/o/r/commit/abc123'),
+  'https://api.github.com/repos/o/r/commits/abc123',
+  'commit url -> REST API commits endpoint'
 );
 assert.equal(
   toDiffUrl('https://example.com/x.diff'),

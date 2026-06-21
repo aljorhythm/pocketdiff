@@ -53,7 +53,7 @@ A single positional argument is classified automatically:
 
 | Input | Treated as |
 |-------|-----------|
-| `https://…` | a URL to fetch — GitHub PR / commit / compare pages map to their raw `.diff`; any raw diff URL is fetched directly |
+| `https://…` | a URL to fetch — GitHub PR / commit / compare pages map to the GitHub API diff (works for private repos with a token); any raw diff URL is fetched directly |
 | an existing file | a local unified-diff file |
 | anything else | arguments for `git diff` (e.g. `main...HEAD`, `HEAD~3`) |
 | (omitted) | piped stdin if present, otherwise the working tree |

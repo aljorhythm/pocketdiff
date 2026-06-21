@@ -66,12 +66,20 @@ function readStdin() {
 
 async function fetchDiff(input) {
   const url = toDiffUrl(input);
+  const { hostname } = new URL(url);
+  const isGitHub = /(^|\.)github\.com$/.test(hostname);
+  const isGitHubApi = hostname === 'api.github.com';
   const headers = {
     'User-Agent': 'pocketdiff',
-    Accept: 'application/vnd.github.v3.diff, text/plain, */*',
+    // The REST API needs the diff media type explicitly; ask for ONLY it so
+    // content negotiation can't fall back to JSON. A raw `.diff` URL just
+    // serves text, so there we keep the broad Accept.
+    Accept: isGitHubApi
+      ? 'application/vnd.github.v3.diff'
+      : 'application/vnd.github.v3.diff, text/plain, */*',
   };
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (token && /(^|\.)github\.com$/.test(new URL(url).hostname)) {
+  if (token && isGitHub) {
     headers.Authorization = 'token ' + token;
   }
   let res;
