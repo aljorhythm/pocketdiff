@@ -121,10 +121,42 @@ assert.equal(
   'https://api.github.com/repos/o/r/commits/abc123',
   'commit url -> REST API commits endpoint'
 );
+// GitLab — commit / merge request / compare pages map to the raw `.diff`.
+assert.equal(
+  toDiffUrl('https://gitlab.com/group/proj/-/commit/abcdef0'),
+  'https://gitlab.com/group/proj/-/commit/abcdef0.diff',
+  'GitLab commit url -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://gitlab.com/group/sub/proj/-/merge_requests/7/diffs'),
+  'https://gitlab.com/group/sub/proj/-/merge_requests/7.diff',
+  'GitLab nested-group MR url (with /diffs) -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://gitlab.com/g/p/-/compare/a...b'),
+  'https://gitlab.com/g/p/-/compare/a...b.diff',
+  'GitLab compare url -> .diff'
+);
+assert.equal(
+  toDiffUrl('https://gitlab.example.com/g/p/-/commit/deadbeef'),
+  'https://gitlab.example.com/g/p/-/commit/deadbeef.diff',
+  'self-managed GitLab commit url -> .diff'
+);
+// Bitbucket — commit / pull request pages map to the REST API diff endpoint.
+assert.equal(
+  toDiffUrl('https://bitbucket.org/ws/repo/commits/abcdef0'),
+  'https://api.bitbucket.org/2.0/repositories/ws/repo/diff/abcdef0',
+  'Bitbucket commit url -> API diff'
+);
+assert.equal(
+  toDiffUrl('https://bitbucket.org/ws/repo/pull-requests/42'),
+  'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/42/diff',
+  'Bitbucket PR url -> API diff'
+);
 assert.equal(
   toDiffUrl('https://example.com/x.diff'),
   'https://example.com/x.diff',
-  'non-github url left as-is'
+  'unknown-host url left as-is'
 );
 assert.equal(classifyInput('https://example.com/x.diff').kind, 'url', 'url detected');
 assert.equal(classifyInput('main...HEAD').kind, 'git', 'git range detected');

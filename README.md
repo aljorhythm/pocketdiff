@@ -53,12 +53,21 @@ A single positional argument is classified automatically:
 
 | Input | Treated as |
 |-------|-----------|
-| `https://…` | a URL to fetch — GitHub PR / commit / compare pages map to the GitHub API diff (works for private repos with a token); any raw diff URL is fetched directly |
+| `https://…` | a URL to fetch — GitHub, GitLab, and Bitbucket PR/MR, commit, and compare pages are mapped to the diff each host serves; any other raw `.diff`/`.patch` URL is fetched directly |
 | an existing file | a local unified-diff file |
 | anything else | arguments for `git diff` (e.g. `main...HEAD`, `HEAD~3`) |
 | (omitted) | piped stdin if present, otherwise the working tree |
 
-For private GitHub URLs, set `GITHUB_TOKEN` (or `GH_TOKEN`).
+**Private repos** — set the matching token and pocketdiff sends the right auth header:
+
+| Host | Env var | Token needs |
+|------|---------|-------------|
+| GitHub | `GITHUB_TOKEN` / `GH_TOKEN` | `repo` scope |
+| GitLab (gitlab.com + self-managed) | `GITLAB_TOKEN` / `GL_TOKEN` | `read_api` / `read_repository` |
+| Bitbucket | `BITBUCKET_TOKEN` | `repository:read` |
+
+If a fetch fails, the error says how to recover — e.g. a `404`/`403` on a private
+repo tells you exactly which token to set.
 
 ### Options
 
@@ -69,6 +78,73 @@ For private GitHub URLs, set `GITHUB_TOKEN` (or `GH_TOKEN`).
 | `-h, --help`          | Show help |
 
 Anything after `--` is passed straight to `git diff`.
+
+## Examples
+
+All of these write a self-contained `review.html` you can open on any device.
+The URLs below are real, public references you can run as-is — and each one
+edits a markdown file, so the **Diff / Preview** toggle is worth a look.
+
+**GitHub** — paste a PR, commit, or compare *page* URL; pocketdiff maps it to the
+GitHub API diff (works for private repos when `GITHUB_TOKEN`/`GH_TOKEN` is set):
+
+```bash
+# a public commit that edits readme.md (shows the markdown preview)
+npx pocketdiff -o review.html \
+  https://github.com/sindresorhus/awesome/commit/24da1c60ba400087006af9ff02accdb4a53472b6
+
+# a pull request / a compare range
+npx pocketdiff -o review.html https://github.com/owner/repo/pull/42
+npx pocketdiff -o review.html https://github.com/owner/repo/compare/v1.0.0...v1.1.0
+```
+
+**GitLab** — same idea; commit, merge-request, and compare *page* URLs are mapped
+to GitLab's raw `.diff` (gitlab.com **and** self-managed instances, via the `/-/`
+path):
+
+```bash
+# a public commit that edits README.md (shows the markdown preview)
+npx pocketdiff -o review.html \
+  https://gitlab.com/gitlab-org/gitlab-runner/-/commit/9962b4022534a1272a3c610b9fee1c4833aa340c
+
+# a merge request
+npx pocketdiff -o review.html https://gitlab.com/group/project/-/merge_requests/42
+```
+
+**Bitbucket** — commit and pull-request *page* URLs are mapped to the Bitbucket
+Cloud REST API diff:
+
+```bash
+# a public commit that edits a markdown file (shows the markdown preview)
+npx pocketdiff -o review.html \
+  https://bitbucket.org/bitbucketpipelines/pipelines-guide-node/commits/54ccc700920973b83b67717a9859be4ab70eb240
+
+# a pull request
+npx pocketdiff -o review.html https://bitbucket.org/workspace/repo/pull-requests/42
+```
+
+Any other raw `.diff`/`.patch` URL is fetched directly, so hosts pocketdiff
+doesn't special-case still work if you link straight to the diff.
+
+**Local repo** — no network needed; pocketdiff runs `git` for you (or pipe a diff):
+
+```bash
+# current branch vs main
+git diff main...HEAD | npx pocketdiff -o review.html
+
+# a commit range (passed straight to `git diff`)
+npx pocketdiff -o review.html HEAD~3...HEAD
+
+# a single commit — no pipe (`^!` expands to its parent..commit)
+npx pocketdiff -o review.html <sha>^!
+
+# a single commit, piped in (use -m/--first-parent for merge commits)
+git show <sha> | npx pocketdiff -o review.html
+
+# uncommitted working-tree changes (no input at all)
+npx pocketdiff -o review.html
+```
+
 
 ## Claude Code skill
 
