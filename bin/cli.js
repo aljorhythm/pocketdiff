@@ -217,7 +217,9 @@ function newRev(args) {
 function resolveImages(files, args) {
   const rev = newRev(args);
   for (const f of files) {
-    const path = f.newPath && f.newPath !== '/dev/null' ? f.newPath : null;
+    // strip git's trailing tab on spaced filenames (see cleanPath in group.js)
+    const raw = f.newPath && f.newPath !== '/dev/null' ? f.newPath : null;
+    const path = raw ? raw.split('\t')[0] : null;
     if (!path || f.type === 'delete' || !IMAGE_EXT.test(path)) continue;
     let buf = null;
     try {
