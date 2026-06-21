@@ -102,6 +102,11 @@ const mdFile = files.find((f) => f.path === 'docs/README.md');
 assert(html.includes(`<a class="vtab" href="#prev-${mdFile.id}">Preview</a>`), 'preview tab present');
 assert(html.includes(`id="prev-${mdFile.id}" class="preview markdown"`), 'preview block present');
 assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview');
+// preview-first: the diff sits in a .diffview wrapper, hidden by default so the
+// rendered Preview is what you land on (Diff is one tap away)
+assert(html.includes('<div class="diffview">'), 'markdown diff wrapped for toggling');
+assert(/\.preview\{display:block[^}]*\}/.test(html), 'preview shown by default');
+assert(html.includes('.diffview{display:none}'), 'markdown diff hidden by default');
 // markdown files surfaced in a top bar, linking to the preview
 assert(html.includes('class="mdbar"'), 'markdown bar present');
 assert(html.includes(`class="md-chip" href="#prev-${mdFile.id}"`), 'md chip links to preview');
