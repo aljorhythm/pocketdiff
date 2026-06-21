@@ -1,0 +1,12 @@
+#!/bin/sh
+# Keep the self-contained skill bundle (.claude/skills/pocketdiff/cli.cjs) in sync
+# with src/ on every commit. esbuild output is deterministic, so when nothing
+# changed this is a no-op. Skips silently if esbuild isn't installed (e.g. a
+# docs-only checkout without `npm install`).
+if [ -x node_modules/.bin/esbuild ] || command -v esbuild >/dev/null 2>&1; then
+  npm run --silent bundle || {
+    echo "pre-commit: failed to rebuild the pocketdiff bundle" >&2
+    exit 1
+  }
+  git add .claude/skills/pocketdiff/cli.cjs
+fi
