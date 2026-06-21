@@ -2,8 +2,12 @@
 
 const fs = require('fs');
 
-// Best-effort: turn a GitHub web URL (PR, compare, commit) into its raw .diff
-// URL. Anything else is returned unchanged and fetched as-is.
+// Best-effort: turn a GitHub web URL (PR, compare, commit) into the REST API
+// endpoint that serves its diff. We use api.github.com rather than the web
+// `<url>.diff` shortcut because the latter 404s for PRs/commits in PRIVATE
+// repos even with a token, whereas the API honors the token and returns the
+// diff via the `application/vnd.github.v3.diff` media type (see fetchDiff).
+// Anything else is returned unchanged and fetched as-is.
 function toDiffUrl(u) {
   let url;
   try {
@@ -13,15 +17,15 @@ function toDiffUrl(u) {
   }
   const host = url.hostname.replace(/^www\./, '');
   if (host === 'github.com') {
-    const base = (a, b, rest) => `https://github.com/${a}/${b}/${rest}`;
+    const api = (a, b, rest) => `https://api.github.com/repos/${a}/${b}/${rest}`;
     const strip = (s) => s.replace(/\/$/, '').replace(/\.(diff|patch)$/, '');
     let m;
     if ((m = url.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/)))
-      return base(m[1], m[2], `pull/${m[3]}.diff`);
+      return api(m[1], m[2], `pulls/${m[3]}`);
     if ((m = url.pathname.match(/^\/([^/]+)\/([^/]+)\/compare\/(.+)/)))
-      return base(m[1], m[2], `compare/${strip(m[3])}.diff`);
+      return api(m[1], m[2], `compare/${strip(m[3])}`);
     if ((m = url.pathname.match(/^\/([^/]+)\/([^/]+)\/commit\/([0-9a-fA-F]+)/)))
-      return base(m[1], m[2], `commit/${m[3]}.diff`);
+      return api(m[1], m[2], `commits/${m[3]}`);
   }
   return u;
 }

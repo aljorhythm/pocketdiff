@@ -48,7 +48,7 @@ node bin/cli.js -o review.html origin/main...HEAD
 # a local .diff file
 node bin/cli.js -o review.html changes.diff
 
-# a GitHub PR / commit / compare URL (best-effort -> raw .diff)
+# a GitHub PR / commit / compare URL (-> GitHub API diff; works for private repos with a token)
 node bin/cli.js -o review.html https://github.com/octocat/Hello-World/commit/7fd1a60b01f91b314f59955a4e4d4e80d8edf11d
 
 # help
