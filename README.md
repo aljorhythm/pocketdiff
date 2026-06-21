@@ -72,7 +72,7 @@ Anything after `--` is passed straight to `git diff`.
 
 ## Claude Code skill
 
-This repo ships a [Claude Code](https://code.claude.com) skill (`run-pocketdiff`)
+This repo ships a [Claude Code](https://code.claude.com) skill (`pocketdiff`)
 so you can generate a review straight from a Claude session. Install it from this
 repo with the [skills.sh](https://www.skills.sh) CLI:
 
@@ -80,10 +80,10 @@ repo with the [skills.sh](https://www.skills.sh) CLI:
 npx -y skills add -g aljorhythm/pocketdiff
 ```
 
-This copies `.claude/skills/run-pocketdiff/` into your global `~/.claude/skills/`
+This copies `.claude/skills/pocketdiff/` into your global `~/.claude/skills/`
 so it's available in every project. (`-y` skips the npx download prompt; `-g`
 installs globally — drop it to install into the current project's
-`.claude/skills/` instead.) Then invoke it in Claude Code with `/run-pocketdiff`.
+`.claude/skills/` instead.) Then invoke it in Claude Code with `/pocketdiff`.
 
 > The skill installs straight from this GitHub repo — it does not require the npm
 > package. (There is no `npx skill install`; `npx skills add <owner>/<repo>` is the

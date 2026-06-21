@@ -3,7 +3,7 @@
 // writes one self-contained HTML review file. This driver runs that real flow on
 // a sample multi-file diff and asserts the output has the key review features.
 //
-//   node .claude/skills/run-pocketdiff/driver.mjs
+//   node .claude/skills/pocketdiff/driver.mjs
 //
 // Exits 0 on success, non-zero (and prints which check failed) otherwise.
 
@@ -17,8 +17,8 @@ import { createRequire } from 'node:module';
 const here = dirname(fileURLToPath(import.meta.url));
 
 // Locate the pocketdiff CLI robustly. This skill runs both ways: nested inside
-// the repo (`<repo>/.claude/skills/run-pocketdiff/`) AND installed globally into
-// `~/.claude/skills/run-pocketdiff/`, where a fixed `../../../bin/cli.js` points
+// the repo (`<repo>/.claude/skills/pocketdiff/`) AND installed globally into
+// `~/.claude/skills/pocketdiff/`, where a fixed `../../../bin/cli.js` points
 // at the wrong place. Resolution order: explicit override, then walk up for
 // `bin/cli.js`, then a resolved `pocketdiff` package install.
 function findCli() {
