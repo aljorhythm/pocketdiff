@@ -23,6 +23,7 @@ Usage:
 Options:
   -o, --output <file>   Write HTML to <file> (default: stdout)
   -t, --title <text>    Title shown in the header
+  --highlight           Syntax-highlight code (opt-in; common languages)
   -h, --help            Show this help
 
 Examples:
@@ -36,7 +37,7 @@ For private GitHub URLs, set GITHUB_TOKEN (or GH_TOKEN).
 `;
 
 function parseArgs(argv) {
-  const opts = { output: null, title: null, args: [] };
+  const opts = { output: null, title: null, highlight: false, args: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '-h' || a === '--help') {
@@ -46,6 +47,8 @@ function parseArgs(argv) {
       opts.output = argv[++i];
     } else if (a === '-t' || a === '--title') {
       opts.title = argv[++i];
+    } else if (a === '--highlight') {
+      opts.highlight = true;
     } else if (a === '--') {
       opts.args.push(...argv.slice(i + 1));
       break;
@@ -199,7 +202,7 @@ async function main() {
     );
   }
 
-  const html = render(files || [], { title: opts.title });
+  const html = render(files || [], { title: opts.title, highlight: opts.highlight });
 
   if (opts.output) {
     fs.writeFileSync(opts.output, html);

@@ -72,6 +72,9 @@ node bin/cli.js -o review.html https://gitlab.com/gitlab-org/gitlab-runner/-/com
 # a Bitbucket commit / pull-request URL (-> Bitbucket Cloud API diff)
 node bin/cli.js -o review.html https://bitbucket.org/bitbucketpipelines/pipelines-guide-node/commits/54ccc700920973b83b67717a9859be4ab70eb240
 
+# opt-in syntax highlighting (off by default; common languages)
+node bin/cli.js --highlight -o review.html main...HEAD
+
 # help
 node bin/cli.js -h
 ```
