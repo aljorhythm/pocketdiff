@@ -45,11 +45,20 @@ git diff main...HEAD | node bin/cli.js -o review.html
 # git range (pocketdiff runs git for you)
 node bin/cli.js -o review.html origin/main...HEAD
 
+# a single local commit (`^!` expands to its parent..commit; or `git show <sha> |`)
+node bin/cli.js -o review.html <sha>^!
+
 # a local .diff file
 node bin/cli.js -o review.html changes.diff
 
-# a GitHub PR / commit / compare URL (-> GitHub API diff; works for private repos with a token)
-node bin/cli.js -o review.html https://github.com/octocat/Hello-World/commit/7fd1a60b01f91b314f59955a4e4d4e80d8edf11d
+# a GitHub PR / commit / compare URL (-> GitHub API diff; private repos work with a token)
+node bin/cli.js -o review.html https://github.com/sindresorhus/awesome/commit/24da1c60ba400087006af9ff02accdb4a53472b6
+
+# a GitLab commit / merge-request / compare URL (gitlab.com + self-managed -> raw .diff)
+node bin/cli.js -o review.html https://gitlab.com/gitlab-org/gitlab-runner/-/commit/9962b4022534a1272a3c610b9fee1c4833aa340c
+
+# a Bitbucket commit / pull-request URL (-> Bitbucket Cloud API diff)
+node bin/cli.js -o review.html https://bitbucket.org/bitbucketpipelines/pipelines-guide-node/commits/54ccc700920973b83b67717a9859be4ab70eb240
 
 # help
 node bin/cli.js -h
@@ -87,16 +96,18 @@ in `test/screenshots/`.
 - **Markdown preview shows changed sections, not the whole document.** A unified
   diff only carries changed hunks plus a little context, so a full-file render
   isn't possible from a diff alone.
-- **URL input needs network.** Private GitHub URLs need `GITHUB_TOKEN` (or
-  `GH_TOKEN`) in the environment; pocketdiff adds it as an auth header for
-  `github.com` hosts.
+- **URL input needs network.** Private repos need a token in the environment,
+  per host: GitHub `GITHUB_TOKEN`/`GH_TOKEN`, GitLab `GITLAB_TOKEN`/`GL_TOKEN`,
+  Bitbucket `BITBUCKET_TOKEN`. pocketdiff attaches the right auth header for the
+  detected host. On failure the error names the token to set.
 - **Piped stdin always wins** over a positional input.
 
 ## Troubleshooting
 
-- `pocketdiff: no changes found in the diff.` — the diff/range was empty. Check
+- `pocketdiff: no changes found in the diff …` — the diff/range was empty. Check
   the range (e.g. `origin/main...HEAD`) or that the file/URL has content.
 - `pocketdiff: could not read a git diff...` — not in a git repo, or a bad range.
   Pass a `.diff` file, a URL, or pipe a diff instead.
 - `fetch ... returned HTTP 404/403` — wrong URL, or a private repo without a
-  token. Set `GITHUB_TOKEN`.
+  token. The message names the env var to set for that host (e.g. `GITHUB_TOKEN`,
+  `GITLAB_TOKEN`, `BITBUCKET_TOKEN`).

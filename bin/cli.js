@@ -66,9 +66,13 @@ function readStdin() {
 
 async function fetchDiff(input) {
   const url = toDiffUrl(input);
-  const { hostname } = new URL(url);
+  const { hostname, pathname } = new URL(url);
   const isGitHub = /(^|\.)github\.com$/.test(hostname);
   const isGitHubApi = hostname === 'api.github.com';
+  const isBitbucketApi = hostname === 'api.bitbucket.org';
+  // GitLab's diff is served from the project web route, which carries the `/-/`
+  // separator — true for gitlab.com and self-managed instances alike.
+  const isGitLab = pathname.includes('/-/');
   const headers = {
     'User-Agent': 'pocketdiff',
     // The REST API needs the diff media type explicitly; ask for ONLY it so
@@ -78,18 +82,73 @@ async function fetchDiff(input) {
       ? 'application/vnd.github.v3.diff'
       : 'application/vnd.github.v3.diff, text/plain, */*',
   };
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
-  if (token && isGitHub) {
-    headers.Authorization = 'token ' + token;
+  // Provider-specific auth so PRIVATE repos resolve. Each header is attached
+  // only when its token env var is set, and is harmless on public resources.
+  const ghToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const glToken = process.env.GITLAB_TOKEN || process.env.GL_TOKEN;
+  const bbToken = process.env.BITBUCKET_TOKEN;
+  if (isGitHub && ghToken) {
+    headers.Authorization = 'token ' + ghToken; // GitHub PAT
+  } else if (isGitLab && glToken) {
+    headers['PRIVATE-TOKEN'] = glToken; // GitLab personal access token
+  } else if (isBitbucketApi && bbToken) {
+    headers.Authorization = 'Bearer ' + bbToken; // Bitbucket access token
   }
+  // Provider + token info for actionable error messages on failure.
+  let provider = null;
+  let tokenEnv = null;
+  let tokenPresent = false;
+  if (isGitHub) {
+    [provider, tokenEnv, tokenPresent] = ['GitHub', 'GITHUB_TOKEN (or GH_TOKEN)', !!ghToken];
+  } else if (isGitLab) {
+    [provider, tokenEnv, tokenPresent] = ['GitLab', 'GITLAB_TOKEN (or GL_TOKEN)', !!glToken];
+  } else if (isBitbucketApi) {
+    [provider, tokenEnv, tokenPresent] = ['Bitbucket', 'BITBUCKET_TOKEN', !!bbToken];
+  }
+
   let res;
   try {
     res = await fetch(url, { headers, redirect: 'follow' });
   } catch (e) {
-    throw new Error(`could not fetch ${url}: ${e.message}`);
+    throw new Error(
+      `could not reach ${url}: ${e.message}. Check your network/proxy, or generate the diff ` +
+        'locally (`git diff <range>`) and pipe it in instead.'
+    );
   }
-  if (!res.ok) throw new Error(`fetch ${url} returned HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`fetch ${url} returned HTTP ${res.status}${recoveryHint(res.status, provider, tokenEnv, tokenPresent)}`);
+  }
   return await res.text();
+}
+
+// Turn an HTTP failure into a sentence that tells the user how to recover —
+// most importantly, which token to set (and with what access) for a private repo.
+function recoveryHint(status, provider, tokenEnv, tokenPresent) {
+  const scopes = {
+    GitHub: "a 'repo'-scoped token",
+    GitLab: "a token with 'read_api' (or 'read_repository') scope",
+    Bitbucket: "a token/app password with 'repository:read'",
+  };
+  if (status === 401 || status === 403) {
+    if (!provider) return ' — authentication required. The host refused the request.';
+    return tokenPresent
+      ? ` — ${provider} rejected the token. It may be expired or lack access; use ${scopes[provider]} that can read this repo.`
+      : ` — looks private/forbidden. Set ${tokenEnv} to ${scopes[provider]} and retry.`;
+  }
+  if (status === 404) {
+    if (!provider) return ' — not found. Check the URL, or pass a raw .diff URL / pipe a diff instead.';
+    return tokenPresent
+      ? ' — not found. Double-check the URL; the token may also lack access to a private repo.'
+      : ` — not found, or the repo is private. Verify the URL; if private, set ${tokenEnv} and retry.`;
+  }
+  if (status === 406 || status === 422) {
+    return ' — the diff may be too large for the host to serve. Generate it locally with `git diff` and pipe it in.';
+  }
+  if (status === 429) {
+    return ' — rate limited. Wait and retry' + (provider && !tokenPresent ? `, or set ${tokenEnv} to raise the limit.` : '.');
+  }
+  if (status >= 500) return ' — the host had a server error. Retry shortly.';
+  return '';
 }
 
 function runGit(args) {
@@ -134,7 +193,10 @@ async function main() {
 
   const files = parser.parse(diffText);
   if (!files || files.length === 0) {
-    process.stderr.write('pocketdiff: no changes found in the diff.\n');
+    process.stderr.write(
+      'pocketdiff: no changes found in the diff — the range/URL may be empty, or it was a ' +
+        'merge commit shown without a diff. Check the range, or use `git show -m`/`--first-parent`.\n'
+    );
   }
 
   const html = render(files || [], { title: opts.title });
