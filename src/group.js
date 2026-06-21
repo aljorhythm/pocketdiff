@@ -191,4 +191,5 @@ module.exports = {
   NOISE_PATTERNS,
   layerOf,
   domainKeyOf,
+  LAYER_ORDER,
 };
