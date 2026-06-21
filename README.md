@@ -100,6 +100,8 @@ repo tells you exactly which token to set.
 | `-o, --output <file>` | Write HTML to a file (default: stdout) |
 | `-t, --title <text>`  | Title shown in the header |
 | `--highlight`         | Opt-in syntax highlighting for common languages (off by default) |
+| `--light`, `--dark`   | Force the colour theme (default: follow the system) |
+| `--group <how>`       | Group files by `dir` (default), `layer`, or `domain` |
 | `-h, --help`          | Show help |
 
 Anything after `--` is passed straight to `git diff`.
@@ -111,6 +113,19 @@ output minimal:
 
 ```bash
 git diff main...HEAD | npx pocketdiff --highlight -o review.html
+```
+
+`--group` reorganises a sprawling diff by **semantics** instead of folders
+(heuristic, best-effort):
+
+- `layer` — clusters files by architectural role from their names (controllers,
+  services, repositories, models, routes, tests, …), regardless of folder.
+- `domain` — clusters files about the same thing (`user.service.ts`,
+  `users.controller.ts`, `userRepository.ts` → one `user` group) by name
+  similarity.
+
+```bash
+npx pocketdiff --group layer -o review.html origin/main...HEAD
 ```
 
 ## Examples

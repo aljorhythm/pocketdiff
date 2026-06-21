@@ -75,6 +75,9 @@ node bin/cli.js -o review.html https://bitbucket.org/bitbucketpipelines/pipeline
 # opt-in syntax highlighting (off by default; common languages)
 node bin/cli.js --highlight -o review.html main...HEAD
 
+# force a theme, and/or group by semantics (dir [default] | layer | domain)
+node bin/cli.js --dark --group layer -o review.html main...HEAD
+
 # help
 node bin/cli.js -h
 ```

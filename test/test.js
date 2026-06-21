@@ -55,10 +55,28 @@ assert(lock.collapsed === true, 'lockfile collapsed by default');
 assert(app.collapsed === false, 'source file expanded by default');
 assert(app.additions === 2 && app.deletions === 1, 'counts correct');
 
-// grouping
+// grouping — by directory (default)
 const groups = group(files);
-const dirs = groups.map((g) => g.dir);
+const dirs = groups.map((g) => g.label);
 assert(dirs.includes('src'), 'src group exists');
+
+// grouping — by layer and by domain (crude semantic heuristics)
+const semFiles = classify(
+  parser.parse(
+    'diff --git a/src/user.service.ts b/src/user.service.ts\nindex 1..2 100644\n--- a/src/user.service.ts\n+++ b/src/user.service.ts\n@@ -1 +1 @@\n-a\n+b\n' +
+      'diff --git a/api/users.controller.ts b/api/users.controller.ts\nindex 1..2 100644\n--- a/api/users.controller.ts\n+++ b/api/users.controller.ts\n@@ -1 +1 @@\n-a\n+b\n' +
+      'diff --git a/db/orderRepository.ts b/db/orderRepository.ts\nindex 1..2 100644\n--- a/db/orderRepository.ts\n+++ b/db/orderRepository.ts\n@@ -1 +1 @@\n-a\n+b\n' +
+      'diff --git a/x/user.test.ts b/x/user.test.ts\nindex 1..2 100644\n--- a/x/user.test.ts\n+++ b/x/user.test.ts\n@@ -1 +1 @@\n-a\n+b\n'
+  )
+);
+const byLayer = group(semFiles, 'layer').map((g) => g.label);
+assert(byLayer.includes('services') && byLayer.includes('controllers'), 'layer groups by role');
+assert(byLayer.includes('repositories') && byLayer.includes('tests'), 'repo + test layers detected');
+const byDomain = group(semFiles, 'domain');
+const userGroup = byDomain.find((g) => g.label === 'user');
+// user.service.ts, users.controller.ts and user.test.ts all key to "user"
+assert(userGroup && userGroup.files.length === 3, 'domain clusters user.* across folders');
+assert(byDomain.some((g) => g.label === 'order'), 'orderRepository keys to order domain');
 
 // rendered HTML
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');

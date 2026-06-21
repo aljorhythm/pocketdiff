@@ -5797,22 +5797,135 @@ var require_group = __commonJS({
         };
       });
     }
-    function group(files) {
-      const byDir = /* @__PURE__ */ new Map();
-      for (const file of files) {
-        if (!byDir.has(file.dir)) byDir.set(file.dir, []);
-        byDir.get(file.dir).push(file);
+    function baseName(p) {
+      const i = p.lastIndexOf("/");
+      return i === -1 ? p : p.slice(i + 1);
+    }
+    var LAYER_RULES = [
+      ["tests", /(^|[._-])(test|spec)s?([._-]|$)/i],
+      ["migrations", /migration/i],
+      ["controllers", /controller/i],
+      ["routes", /(^|[._-])(route|router)s?([._-]|$)/i],
+      ["handlers", /handler/i],
+      ["middleware", /middleware/i],
+      ["services", /service/i],
+      ["repositories", /(repositor(y|ies)|(^|[._-])repos?([._-]|$))/i],
+      ["models", /(model|entit(y|ies))/i],
+      ["schemas", /schema/i],
+      ["dtos", /(^|[._-])dtos?([._-]|$)/i],
+      ["components", /component/i],
+      ["hooks", /(^|[._-])use[A-Z]|(^|[._-])hooks?([._-]|$)/],
+      ["styles", /\.(css|scss|sass|less)$/i],
+      ["docs", /\.(md|mdx|markdown)$/i],
+      ["types", /(^|[._-])(types?|interfaces?|d)([._-]|$)/i],
+      ["config", /(config|settings)/i],
+      ["utils", /(util|helper)/i]
+    ];
+    var LAYER_ORDER = LAYER_RULES.map((r) => r[0]).concat("other");
+    function layerOf(path) {
+      const base = baseName(path);
+      for (const [label, re] of LAYER_RULES) if (re.test(base)) return label;
+      return "other";
+    }
+    var LAYER_WORDS = /* @__PURE__ */ new Set([
+      "test",
+      "tests",
+      "spec",
+      "specs",
+      "controller",
+      "controllers",
+      "service",
+      "services",
+      "repository",
+      "repositories",
+      "repo",
+      "repos",
+      "model",
+      "models",
+      "entity",
+      "entities",
+      "route",
+      "routes",
+      "router",
+      "handler",
+      "handlers",
+      "middleware",
+      "schema",
+      "schemas",
+      "dto",
+      "dtos",
+      "component",
+      "components",
+      "hook",
+      "hooks",
+      "type",
+      "types",
+      "interface",
+      "interfaces",
+      "config",
+      "settings",
+      "util",
+      "utils",
+      "helper",
+      "helpers",
+      "index",
+      "main",
+      "app",
+      "style",
+      "styles",
+      "module",
+      "impl",
+      "migration",
+      "migrations"
+    ]);
+    function domainKeyOf(path) {
+      const base = baseName(path).replace(/\.[^.]+$/, "");
+      const tokens = base.split(/[._\-\s]+|(?=[A-Z])/).map((t) => t.toLowerCase()).filter(Boolean);
+      const sig = tokens.filter((t) => !LAYER_WORDS.has(t) && !/^\d+$/.test(t));
+      let key = sig[0] || tokens[0] || "misc";
+      key = key.replace(/s$/, "") || key;
+      return key || "misc";
+    }
+    function bucket(files, keyOf, order, last) {
+      const map = /* @__PURE__ */ new Map();
+      for (const f of files) {
+        const k = keyOf(f);
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(f);
       }
-      const groups = [...byDir.entries()].map(([dir, groupFiles]) => {
-        groupFiles.sort((a, b) => a.path.localeCompare(b.path));
-        const additions = groupFiles.reduce((s, f) => s + f.additions, 0);
-        const deletions = groupFiles.reduce((s, f) => s + f.deletions, 0);
-        return { dir, files: groupFiles, additions, deletions };
+      const groups = [...map.entries()].map(([label, gf]) => {
+        gf.sort((a, b) => a.path.localeCompare(b.path));
+        return {
+          label,
+          files: gf,
+          additions: gf.reduce((s, f) => s + f.additions, 0),
+          deletions: gf.reduce((s, f) => s + f.deletions, 0)
+        };
       });
-      groups.sort((a, b) => a.dir.localeCompare(b.dir));
+      const rank = (l) => {
+        if (order) {
+          const i = order.indexOf(l);
+          return i === -1 ? order.length : i;
+        }
+        return l === last ? 1 : 0;
+      };
+      groups.sort((a, b) => rank(a.label) - rank(b.label) || a.label.localeCompare(b.label));
       return groups;
     }
-    module2.exports = { classify, group, pathOf, isNoise, NOISE_PATTERNS };
+    function group(files, mode = "dir") {
+      if (mode === "layer") return bucket(files, (f) => layerOf(f.path), LAYER_ORDER);
+      if (mode === "domain") return bucket(files, (f) => domainKeyOf(f.path), null, "misc");
+      return bucket(files, (f) => f.dir, null);
+    }
+    module2.exports = {
+      classify,
+      group,
+      pathOf,
+      isNoise,
+      NOISE_PATTERNS,
+      layerOf,
+      domainKeyOf
+    };
   }
 });
 
@@ -11917,7 +12030,7 @@ var require_render = __commonJS({
     }
     function renderFileList(groups, count) {
       const body = groups.map(
-        (g) => `<div class="fl-group">${esc(g.dir || "(root)")}</div>` + g.files.map(fileListEntry).join("")
+        (g) => `<div class="fl-group">${esc(g.label || "(root)")}</div>` + g.files.map(fileListEntry).join("")
       ).join("");
       return `
 <details class="filelist">
@@ -11926,7 +12039,7 @@ var require_render = __commonJS({
 </details>`;
     }
     function renderGroup(g, hi) {
-      const label = g.dir || "(root)";
+      const label = g.label || "(root)";
       const counts = `<span class="add">+${g.additions}</span> <span class="del">\u2212${g.deletions}</span>`;
       return `
 <details class="group" open data-dir="${esc(label)}">
@@ -11944,7 +12057,7 @@ var require_render = __commonJS({
         f.id = "f" + i;
       });
       const hi = !!opts.highlight;
-      const groups = group(files);
+      const groups = group(files, opts.group);
       const totalAdd = files.reduce((s, f) => s + f.additions, 0);
       const totalDel = files.reduce((s, f) => s + f.deletions, 0);
       const title = opts.title || "pocketdiff review";
@@ -12357,6 +12470,7 @@ Options:
   -t, --title <text>    Title shown in the header
   --highlight           Syntax-highlight code (opt-in; common languages)
   --light, --dark       Force the colour theme (default: follow the system)
+  --group <how>         Group files by: dir (default), layer, or domain
   -h, --help            Show this help
 
 Examples:
@@ -12369,7 +12483,7 @@ Examples:
 For private GitHub URLs, set GITHUB_TOKEN (or GH_TOKEN).
 `;
 function parseArgs(argv) {
-  const opts = { output: null, title: null, highlight: false, theme: null, args: [] };
+  const opts = { output: null, title: null, highlight: false, theme: null, group: "dir", args: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "-h" || a === "--help") {
@@ -12383,6 +12497,8 @@ function parseArgs(argv) {
       opts.highlight = true;
     } else if (a === "--light" || a === "--dark") {
       opts.theme = a.slice(2);
+    } else if (a === "--group") {
+      opts.group = argv[++i];
     } else if (a === "--") {
       opts.args.push(...argv.slice(i + 1));
       break;
@@ -12511,7 +12627,8 @@ async function main() {
   const html = render(files || [], {
     title: opts.title,
     highlight: opts.highlight,
-    theme: opts.theme
+    theme: opts.theme,
+    group: opts.group
   });
   if (opts.output) {
     fs.writeFileSync(opts.output, html);
