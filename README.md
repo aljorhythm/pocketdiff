@@ -37,9 +37,11 @@ pocketdiff makes reading them on the couch actually bearable.
   "related files") under collapsible group headers.
 - **Word-level highlighting** — when a line is edited, the exact words that changed
   are highlighted (great for prose & markdown, helpful everywhere).
-- **Markdown preview** — `.md`/`.markdown`/`.mdx` files get a **Diff / Preview**
-  toggle that renders the changed sections as real markdown (headings, tables, bold)
-  via `markdown-it`, pre-rendered at build time so the output stays offline.
+- **Markdown views** — `.md`/`.markdown`/`.mdx` files get three tabs:
+  **Markdown** (the changed sections rendered as real markdown — headings, tables,
+  bold), **Markdown diff** (the same, rendered *with* inline ins/del — added blocks
+  green, removed struck-through red), and **Diff** (raw `+`/`−`). Rendered at build
+  time via `markdown-it`, so it stays offline. Pure-CSS tabs (work with JS off).
 - **Live filename filter** — type to instantly narrow the file list.
 - **Word wrap on by default**, plus toggle, expand/collapse all, dark mode.
 - **Image previews** — for **local** diffs, added/changed images (PNG, JPG, GIF,

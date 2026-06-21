@@ -11978,6 +11978,45 @@ var require_render = __commonJS({
       if (!blocks.length) return "";
       return md.render(blocks.join("\n\n"));
     }
+    function dedentChanges(changes) {
+      const sample = changes.filter((c) => c.type === "insert" && c.content.trim());
+      const pool = (sample.length ? sample : changes.filter((c) => c.content.trim())).map(
+        (c) => /^[ \t]*/.exec(c.content)[0]
+      );
+      let common = pool[0] || "";
+      for (const ind of pool) {
+        let i = 0;
+        while (i < common.length && common[i] === ind[i]) i++;
+        common = common.slice(0, i);
+        if (!common) break;
+      }
+      if (!common) return changes;
+      return changes.map((c) => ({
+        type: c.type,
+        content: c.content.startsWith(common) ? c.content.slice(common.length) : c.content
+      }));
+    }
+    function renderMarkdownRichDiff(file) {
+      const out = [];
+      for (const hunk of file.hunks) {
+        const runs = [];
+        for (const c of dedentChanges(hunk.changes)) {
+          const kind = c.type === "insert" ? "ins" : c.type === "delete" ? "del" : "ctx";
+          const last = runs[runs.length - 1];
+          if (last && last.kind === kind) last.lines.push(c.content);
+          else runs.push({ kind, lines: [c.content] });
+        }
+        for (const run of runs) {
+          const text = run.lines.join("\n");
+          if (!text.trim()) continue;
+          const html = md.render(text);
+          if (run.kind === "ins") out.push(`<div class="md-ins">${html}</div>`);
+          else if (run.kind === "del") out.push(`<div class="md-del">${html}</div>`);
+          else out.push(html);
+        }
+      }
+      return out.join("");
+    }
     function groupAttrs(file) {
       return ` data-dir="${esc(file.dir)}" data-layer="${esc(layerOf(file.path))}" data-domain="${esc(domainKeyOf(file.path))}" data-add="${file.additions}" data-del="${file.deletions}"`;
     }
@@ -11997,8 +12036,9 @@ var require_render = __commonJS({
         const table = '<table class="diff">' + rows + "</table>";
         if (isMarkdown(file.path)) {
           const preview = renderMarkdownPreview(file);
+          const rich = renderMarkdownRichDiff(file);
           const id = file.id;
-          body = `<div class="vtabs"><a class="vtab" href="#${id}">Diff</a><a class="vtab" href="#prev-${id}">Preview</a></div><div id="prev-${id}" class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div><div class="diffview">${table}</div>`;
+          body = `<div class="vtabs"><a class="vtab" href="#prev-${id}">Markdown</a><a class="vtab" href="#md-${id}">Markdown diff</a><a class="vtab" href="#${id}">Diff</a></div><div id="md-${id}" class="mddiff markdown">${rich}<p class="preview-note">Rendered diff of the changed sections.</p></div><div class="diffview">${table}</div><div id="prev-${id}" class="preview markdown">${preview}<p class="preview-note">Rendered new version of the changed sections.</p></div>`;
         } else {
           body = table;
         }
@@ -12257,16 +12297,24 @@ details.filelist{border-bottom:1px solid var(--border)}
 .vtab{font-size:12px;padding:5px 13px;border:1px solid var(--border);border-radius:var(--r-pill);
   background:transparent;color:var(--muted);text-decoration:none;cursor:pointer}
 .vtab:active{background:var(--panel)}
-.preview{display:block;padding:2px 16px 14px;scroll-margin-top:140px}
-.diffview{display:none}
-details.file:target .preview{display:none}
+/* three markdown views via pure :target \u2014 default Markdown (.preview), Markdown
+   diff (.mddiff), raw Diff (.diffview, shown when the file element is targeted).
+   DOM order is mddiff \u2192 diffview \u2192 preview, so each :target hides the trailing
+   default-shown preview. */
+.preview,.mddiff{padding:2px 16px 14px;scroll-margin-top:140px}
+.preview{display:block}
+.mddiff,.diffview{display:none}
+.mddiff:target{display:block}
+.mddiff:target ~ .preview,.mddiff:target ~ .diffview{display:none}
+details.file:target .mddiff,details.file:target .preview{display:none}
 details.file:target .diffview{display:block}
 .preview:target{display:block}
-.preview:target ~ .diffview{display:none}
-/* active-tab cue: Preview is active by default, Diff when the file is targeted */
-.vtab[href^="#prev-"]{color:var(--accent);border-color:var(--accent)}
-details.file:target .vtab[href^="#prev-"]{color:var(--muted);border-color:var(--border)}
-details.file:target .vtab:not([href^="#prev-"]){color:var(--accent);border-color:var(--accent)}
+/* rendered-diff tints: added green, removed struck-through red */
+.md-ins,.md-del{padding:1px 10px;margin:6px 0;border-radius:6px;border-left:3px solid}
+.md-ins{background:var(--add-bg);border-left-color:var(--add-fg)}
+.md-del{background:var(--del-bg);border-left-color:var(--del-fg);text-decoration:line-through;opacity:.8}
+.md-ins>:first-child,.md-del>:first-child{margin-top:0}
+.md-ins>:last-child,.md-del>:last-child{margin-bottom:0}
 .preview-note{color:var(--muted);font-size:12px;border-top:1px solid var(--border);
   padding-top:8px;margin:14px 0 0}
 .markdown{line-height:1.65;word-wrap:break-word}

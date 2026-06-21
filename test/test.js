@@ -162,14 +162,18 @@ assert(html.includes('tr.del .wq{text-decoration:line-through'), 'removed words 
 assert(html.includes('class="wq"'), 'word-level highlight present');
 // markdown gets a pure anchor/:target Preview tab + rendered preview
 const mdFile = files.find((f) => f.path === 'docs/README.md');
-assert(html.includes(`<a class="vtab" href="#prev-${mdFile.id}">Preview</a>`), 'preview tab present');
-assert(html.includes(`id="prev-${mdFile.id}" class="preview markdown"`), 'preview block present');
-assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview');
-// preview-first: the diff sits in a .diffview wrapper, hidden by default so the
-// rendered Preview is what you land on (Diff is one tap away)
-assert(html.includes('<div class="diffview">'), 'markdown diff wrapped for toggling');
-assert(/\.preview\{display:block[^}]*\}/.test(html), 'preview shown by default');
-assert(html.includes('.diffview{display:none}'), 'markdown diff hidden by default');
+// three markdown views: Markdown (rendered new, default), Markdown diff, raw Diff
+assert(html.includes(`<a class="vtab" href="#prev-${mdFile.id}">Markdown</a>`), 'markdown tab present');
+assert(html.includes(`<a class="vtab" href="#md-${mdFile.id}">Markdown diff</a>`), 'markdown-diff tab present');
+assert(html.includes(`id="prev-${mdFile.id}" class="preview markdown"`), 'rendered (markdown) block present');
+assert(html.includes(`id="md-${mdFile.id}" class="mddiff markdown"`), 'rendered-diff block present');
+assert(html.includes('<strong>realtime</strong>'), 'markdown rendered');
+// the rendered diff tints the removed and added lines (block-level)
+assert(html.includes('class="md-del"') && html.includes('class="md-ins"'), 'rendered diff marks del + ins');
+// rendered (Markdown) shown by default; the others hidden until :target
+assert(html.includes('<div class="diffview">'), 'raw diff wrapped for toggling');
+assert(/\.preview\{display:block[^}]*\}/.test(html), 'rendered markdown shown by default');
+assert(html.includes('.mddiff,.diffview{display:none}'), 'markdown-diff + raw hidden by default');
 // tab/indented changed sections are dedented so they render as real markdown
 // (a list) instead of an indented code block (markdown-it's 4-space/tab rule)
 const indented = render(
