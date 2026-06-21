@@ -1,5 +1,5 @@
 ---
-name: run-pocketdiff
+name: pocketdiff
 description: Run, build, smoke-test, and use pocketdiff — the CLI that turns a git diff (working tree, range, local .diff file, or a GitHub PR/commit URL) into one self-contained, mobile/tablet-friendly HTML review file. Use when asked to run pocketdiff, generate a diff review HTML, render a PR/diff for reading on a phone, or smoke-test the tool.
 ---
 
@@ -27,7 +27,7 @@ The driver generates an HTML review from a sample multi-file diff and asserts th
 output is self-contained and has the key review features. No browser needed.
 
 ```bash
-node .claude/skills/run-pocketdiff/driver.mjs
+node .claude/skills/pocketdiff/driver.mjs
 ```
 
 Expected: a list of `PASS` lines and `pocketdiff: OK` (exit 0). It prints the path
