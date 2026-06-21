@@ -177,30 +177,81 @@ async function getDiff(opts) {
   // Piped input always wins — the original, primary path.
   if (!process.stdin.isTTY) {
     const piped = readStdin();
-    if (piped.trim()) return piped;
+    if (piped.trim()) return { text: piped, source: { kind: 'stdin' } };
   }
   // A single positional is auto-detected: URL, local file, or git range.
   if (opts.args.length === 1) {
     const { kind, value } = classifyInput(opts.args[0]);
-    if (kind === 'url') return fetchDiff(value);
-    if (kind === 'file') return fs.readFileSync(value, 'utf8');
+    if (kind === 'url') return { text: await fetchDiff(value), source: { kind: 'url' } };
+    if (kind === 'file')
+      return { text: fs.readFileSync(value, 'utf8'), source: { kind: 'file' } };
   }
   // Otherwise hand everything to `git diff` (empty = working tree).
-  return runGit(opts.args);
+  return { text: runGit(opts.args), source: { kind: 'git', args: opts.args } };
+}
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|avif|bmp|ico)$/i;
+const IMAGE_MIME = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', ico: 'image/x-icon',
+};
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
+// Which git revision holds the NEW side of the diff, so we can read image bytes
+// (a unified diff carries none). null => the new side is the working tree (read
+// from disk). Mirrors `git diff` semantics for the args we pass through.
+function newRev(args) {
+  const pos = (args || []).filter((a) => !a.startsWith('-'));
+  if (pos.length === 1) {
+    const m = /\.\.\.?(.+)$/.exec(pos[0]); // A..B / A...B -> B
+    return m ? m[1] : null; // a single ref diffs against the working tree
+  }
+  if (pos.length >= 2) return pos[pos.length - 1]; // git diff A B -> B
+  return null;
+}
+
+// For a LOCAL git diff, resolve added/modified binary image blobs and attach a
+// `data:` URI (`file.image`) so the renderer can show a real thumbnail instead
+// of "Binary file". Best-effort: silently skipped when the blob can't be read or
+// is too large. (URL/piped inputs have no source to fetch from — see #13.)
+function resolveImages(files, args) {
+  const rev = newRev(args);
+  for (const f of files) {
+    const path = f.newPath && f.newPath !== '/dev/null' ? f.newPath : null;
+    if (!path || f.type === 'delete' || !IMAGE_EXT.test(path)) continue;
+    let buf = null;
+    try {
+      buf = rev
+        ? execFileSync('git', ['show', `${rev}:${path}`], { maxBuffer: MAX_IMAGE_BYTES + 4096 })
+        : fs.existsSync(path)
+          ? fs.readFileSync(path)
+          : null;
+    } catch {
+      buf = null;
+    }
+    if (buf && buf.length <= MAX_IMAGE_BYTES) {
+      const ext = path.split('.').pop().toLowerCase();
+      const mime = IMAGE_MIME[ext] || 'application/octet-stream';
+      f.image = `data:${mime};base64,${buf.toString('base64')}`;
+    }
+  }
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
 
   let diffText;
+  let source;
   try {
-    diffText = await getDiff(opts);
+    ({ text: diffText, source } = await getDiff(opts));
   } catch (e) {
     process.stderr.write('pocketdiff: ' + e.message + '\n');
     process.exit(1);
   }
 
   const files = parser.parse(diffText);
+  // Inline image thumbnails when we have a local source to read the bytes from.
+  if (files && source.kind === 'git') resolveImages(files, source.args);
   if (!files || files.length === 0) {
     process.stderr.write(
       'pocketdiff: no changes found in the diff — the range/URL may be empty, or it was a ' +

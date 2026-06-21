@@ -42,6 +42,9 @@ pocketdiff makes reading them on the couch actually bearable.
   via `markdown-it`, pre-rendered at build time so the output stays offline.
 - **Live filename filter** — type to instantly narrow the file list.
 - **Word wrap on by default**, plus toggle, expand/collapse all, dark mode.
+- **Image previews** — for **local** diffs, added/changed images (PNG, JPG, GIF,
+  WebP, …) are inlined as a thumbnail instead of "Binary file" (the bytes are read
+  from git/disk, since a diff carries none). URL/piped diffs keep the note.
 - **Self-contained** — all CSS/JS inlined, zero external requests. Works offline.
 
 > Note: a unified diff only contains changed hunks (plus a little context), not the
