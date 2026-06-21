@@ -109,15 +109,37 @@ function renderHunk(hunk) {
   return rows;
 }
 
+// Strip a common whitespace prefix so a changed section lifted from a diff
+// renders as real markdown instead of an indented code block. A changed block is
+// usually uniformly indented (e.g. tab-indented list items) whose parent — the
+// list item it hangs off — lives OUTSIDE the hunk, so markdown-it sees the bare
+// indent and treats it as code. We compute the common prefix from the *inserted*
+// lines (the actual change) and strip it from every line; context lines at other
+// levels are left alone. Relative nesting within the inserts is preserved.
+function dedent(changes) {
+  const lines = changes.map((c) => c.content);
+  const sample = changes.filter((c) => c.type === 'insert' && c.content.trim());
+  const pool = (sample.length ? sample : changes.filter((c) => c.content.trim())).map(
+    (c) => /^[ \t]*/.exec(c.content)[0]
+  );
+  if (!pool.length) return lines;
+  let common = pool[0];
+  for (const ind of pool) {
+    let i = 0;
+    while (i < common.length && common[i] === ind[i]) i++;
+    common = common.slice(0, i);
+    if (!common) return lines;
+  }
+  return lines.map((l) => (l.startsWith(common) ? l.slice(common.length) : l));
+}
+
 // Build a rendered-markdown preview from the *new* side of the hunks. A diff only
 // carries changed hunks (not the whole file), so this previews changed sections.
 function renderMarkdownPreview(file) {
   const blocks = [];
   for (const hunk of file.hunks) {
-    const lines = hunk.changes
-      .filter((c) => c.type !== 'delete')
-      .map((c) => c.content);
-    if (lines.length) blocks.push(lines.join('\n'));
+    const changes = hunk.changes.filter((c) => c.type !== 'delete');
+    if (changes.length) blocks.push(dedent(changes).join('\n'));
   }
   if (!blocks.length) return '';
   return md.render(blocks.join('\n\n'));
