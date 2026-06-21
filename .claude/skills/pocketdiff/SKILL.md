@@ -45,10 +45,40 @@ The commands in the rest of this file use `node bin/cli.js` and assume the repo 
 `npm install`. To regenerate the bundled `cli.cjs` after changing `src/`, run
 `npm run bundle`.
 
-## Generate a review (the actual user command)
+## Arguments (read this first)
 
-A single positional `input` is auto-detected as a URL, a local file, or a git
-range; with no input it reads piped stdin, else diffs the working tree.
+```
+pocketdiff [options] [input]      # installed skill: node "$HOME/.claude/skills/pocketdiff/cli.cjs" …
+```
+
+**`input`** — ONE positional, auto-detected. Pick exactly one source:
+
+| input | what it is |
+|-------|-----------|
+| _(omitted, with a pipe)_ | reads the diff from **stdin** — `git diff … \| pocketdiff` (stdin always wins) |
+| _(omitted, no pipe)_ | diffs the **working tree** (`git diff`) |
+| `main...HEAD`, `HEAD~3`, `<sha>^!` | a **git range/ref** — passed to `git diff` |
+| `./changes.diff` | a local **.diff file** |
+| `https://…` | a **URL** — GitHub/GitLab/Bitbucket PR·MR/commit/compare page, or any raw `.diff` |
+
+**Options** (all optional):
+
+| option | default | meaning |
+|--------|---------|---------|
+| `-o, --output <file>` | stdout | write the HTML to `<file>` |
+| `-t, --title <text>` | "pocketdiff review" | header title |
+| `--group <dir\|layer\|domain>` | `dir` | group files by folder / architectural role / subject |
+| `--highlight` | off | syntax-highlight code (common languages) |
+| `--light` \| `--dark` | follow system | force the colour theme |
+| `-h, --help` | | show help |
+
+Notes: anything after `--` is passed straight to `git diff`. **Private** repos need
+a token in the env — GitHub `GITHUB_TOKEN`/`GH_TOKEN`, GitLab `GITLAB_TOKEN`/`GL_TOKEN`,
+Bitbucket `BITBUCKET_TOKEN`. The toolbar buttons (filter/wrap/group switch) need
+JavaScript; in a no-JS viewer the diff, grouped jump-index (HTML anchors), native
+collapse, and markdown preview all still work.
+
+## Generate a review — examples
 
 ```bash
 # pipe a diff (primary path)

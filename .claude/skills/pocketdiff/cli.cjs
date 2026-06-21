@@ -12044,7 +12044,7 @@ var require_render = __commonJS({
         (g) => `<div class="fl-group">${esc(g.label || "(root)")}</div>` + g.files.map(fileListEntry).join("")
       ).join("");
       return `
-<details class="filelist">
+<details class="filelist" open>
   <summary><span class="caret"></span><span class="fl-title">Files (${count})</span></summary>
   <div class="fl-body">${body}</div>
 </details>`;
@@ -12084,6 +12084,7 @@ var require_render = __commonJS({
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
+<script>document.documentElement.className+=' js'</script>
 <style>${CSS}${hi ? HL_CSS : ""}</style>
 </head>
 <body class="wrap">
@@ -12153,7 +12154,10 @@ body{margin:0;background:var(--bg);color:var(--fg);
 .title{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
 .title strong{font-size:16px;font-weight:650;letter-spacing:-.01em}
 .summary{color:var(--muted);font-size:13px}
-.controls{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;align-items:center}
+/* JS-only controls: hidden unless JS ran (html.js), so a no-JS viewer (e.g. a
+   phone in-app preview) never shows dead toggles. */
+.controls,.groupby{display:none}
+html.js .controls{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;align-items:center}
 #filter{flex:1 1 100%;font-size:16px;padding:9px 12px;
   border:1px solid var(--border);border-radius:var(--r-ctl);background:var(--bg);color:var(--fg)}
 #filter:focus{outline:none;border-color:var(--accent)}
@@ -12286,8 +12290,8 @@ tr.skip td.ln{font-size:13px;opacity:.6}
 tr.del .wq{text-decoration:line-through;text-decoration-thickness:1px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
 .controls button.active{text-decoration:underline;text-underline-offset:3px}
-/* in-page "Group by" segmented control */
-.groupby{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
+/* in-page "Group by" segmented control (JS-only; revealed by html.js) */
+html.js .groupby{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}
 .gb-label{font-size:12px;color:var(--muted);margin-right:2px}
 .groupby button{font-size:12px;padding:3px 11px;border:1px solid var(--border);border-radius:var(--r-pill);
   background:transparent;color:var(--muted);cursor:pointer}
@@ -12321,6 +12325,9 @@ body.scrolled .controls{margin-top:8px}
   var files=Array.prototype.slice.call(document.querySelectorAll('details.file'));
   var flItems=Array.prototype.slice.call(document.querySelectorAll('.fl-item'));
   var hidenoise=document.getElementById('hidenoise');
+  // The jump index is open by default for no-JS viewers; with JS the filter is
+  // the primary nav, so collapse it to save space.
+  var fl=document.querySelector('details.filelist'); if(fl)fl.open=false;
   function liveGroups(){return Array.prototype.slice.call(document.querySelectorAll('details.group'));}
   function matches(path,q){return !q||path.toLowerCase().indexOf(q)!==-1;}
   function shown(el,q,hide){
