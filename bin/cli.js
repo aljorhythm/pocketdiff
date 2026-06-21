@@ -24,6 +24,7 @@ Options:
   -o, --output <file>   Write HTML to <file> (default: stdout)
   -t, --title <text>    Title shown in the header
   --highlight           Syntax-highlight code (opt-in; common languages)
+  --light, --dark       Force the colour theme (default: follow the system)
   -h, --help            Show this help
 
 Examples:
@@ -37,7 +38,7 @@ For private GitHub URLs, set GITHUB_TOKEN (or GH_TOKEN).
 `;
 
 function parseArgs(argv) {
-  const opts = { output: null, title: null, highlight: false, args: [] };
+  const opts = { output: null, title: null, highlight: false, theme: null, args: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '-h' || a === '--help') {
@@ -49,6 +50,8 @@ function parseArgs(argv) {
       opts.title = argv[++i];
     } else if (a === '--highlight') {
       opts.highlight = true;
+    } else if (a === '--light' || a === '--dark') {
+      opts.theme = a.slice(2);
     } else if (a === '--') {
       opts.args.push(...argv.slice(i + 1));
       break;
@@ -202,7 +205,11 @@ async function main() {
     );
   }
 
-  const html = render(files || [], { title: opts.title, highlight: opts.highlight });
+  const html = render(files || [], {
+    title: opts.title,
+    highlight: opts.highlight,
+    theme: opts.theme,
+  });
 
   if (opts.output) {
     fs.writeFileSync(opts.output, html);

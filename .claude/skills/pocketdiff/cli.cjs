@@ -11700,9 +11700,11 @@ var require_highlight = __commonJS({
       closeWq();
       return out;
     }
+    var HL_DARK = "--hl-comment:#8a877e;--hl-kw:#c9a0f0;--hl-str:#5cc08a;--hl-num:#d6a060;--hl-title:#9aa0e8;--hl-type:#62c3bd;--hl-attr:#62c3bd;--hl-meta:#8a877e";
     var HL_CSS = `
 :root{--hl-comment:#9a978c;--hl-kw:#8a5cc0;--hl-str:#2f7d52;--hl-num:#a96b2e;--hl-title:#565d99;--hl-type:#3f8a86;--hl-attr:#3f8a86;--hl-meta:#8b887d}
-@media (prefers-color-scheme:dark){:root{--hl-comment:#8a877e;--hl-kw:#c9a0f0;--hl-str:#5cc08a;--hl-num:#d6a060;--hl-title:#9aa0e8;--hl-type:#62c3bd;--hl-attr:#62c3bd;--hl-meta:#8a877e}}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){${HL_DARK}}}
+:root[data-theme="dark"]{${HL_DARK}}
 .hljs-comment,.hljs-quote{color:var(--hl-comment);font-style:italic}
 .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-section,.hljs-doctag{color:var(--hl-kw)}
 .hljs-string,.hljs-regexp,.hljs-addition,.hljs-meta-string{color:var(--hl-str)}
@@ -11949,8 +11951,9 @@ var require_render = __commonJS({
       const hasNoise = files.some((f) => f.noise);
       const hideNoiseBtn = hasNoise ? '<button id="hidenoise" type="button" title="Hide generated/lockfile noise">Hide noise</button>' : "";
       const generated = (/* @__PURE__ */ new Date()).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+      const themeAttr = opts.theme === "dark" || opts.theme === "light" ? ` data-theme="${opts.theme}"` : "";
       return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${themeAttr}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -11984,6 +11987,7 @@ ${groups.map((g) => renderGroup(g, hi)).join("")}
 </body>
 </html>`;
     }
+    var DARK_VARS = "--bg:#15161a;--fg:#e7e4dd;--muted:#8a877e;--border:#292a31;--panel:#1c1d22;--add-bg:#112019;--add-fg:#5cc08a;--del-bg:#241317;--del-fg:#e07585;--add-num:#5cc08a1f;--del-num:#e075851f;--code:#e7e4dd;--accent:#9096e0;--add-word:#2f9c6a4d;--del-word:#cf5a6a4d";
     var CSS = `
 :root{
   /* pocketdiff's own palette \u2014 deliberately not a brand's. Warm paper canvas,
@@ -11997,14 +12001,12 @@ ${groups.map((g) => renderGroup(g, hi)).join("")}
   /* one corner-radius system: cards / controls / pills */
   --r-card:12px; --r-ctl:8px; --r-pill:999px;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#15161a; --fg:#e7e4dd; --muted:#8a877e; --border:#292a31; --panel:#1c1d22;
-    --add-bg:#112019; --add-fg:#5cc08a; --del-bg:#241317; --del-fg:#e07585;
-    --add-num:#5cc08a1f; --del-num:#e075851f; --code:#e7e4dd; --accent:#9096e0;
-    --add-word:#2f9c6a4d; --del-word:#cf5a6a4d;
-  }
-}
+/* Dark palette applies (a) automatically with the system, but only when no theme
+   is forced, and (b) explicitly when forced with --dark (data-theme="dark").
+   --light forces light by setting data-theme="light", which the media query
+   below intentionally excludes. */
+@media (prefers-color-scheme: dark){:root:not([data-theme]){${DARK_VARS}}}
+:root[data-theme="dark"]{${DARK_VARS}}
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important;scroll-behavior:auto !important}
 }
@@ -12354,6 +12356,7 @@ Options:
   -o, --output <file>   Write HTML to <file> (default: stdout)
   -t, --title <text>    Title shown in the header
   --highlight           Syntax-highlight code (opt-in; common languages)
+  --light, --dark       Force the colour theme (default: follow the system)
   -h, --help            Show this help
 
 Examples:
@@ -12366,7 +12369,7 @@ Examples:
 For private GitHub URLs, set GITHUB_TOKEN (or GH_TOKEN).
 `;
 function parseArgs(argv) {
-  const opts = { output: null, title: null, highlight: false, args: [] };
+  const opts = { output: null, title: null, highlight: false, theme: null, args: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "-h" || a === "--help") {
@@ -12378,6 +12381,8 @@ function parseArgs(argv) {
       opts.title = argv[++i];
     } else if (a === "--highlight") {
       opts.highlight = true;
+    } else if (a === "--light" || a === "--dark") {
+      opts.theme = a.slice(2);
     } else if (a === "--") {
       opts.args.push(...argv.slice(i + 1));
       break;
@@ -12503,7 +12508,11 @@ async function main() {
       "pocketdiff: no changes found in the diff \u2014 the range/URL may be empty, or it was a merge commit shown without a diff. Check the range, or use `git show -m`/`--first-parent`.\n"
     );
   }
-  const html = render(files || [], { title: opts.title, highlight: opts.highlight });
+  const html = render(files || [], {
+    title: opts.title,
+    highlight: opts.highlight,
+    theme: opts.theme
+  });
   if (opts.output) {
     fs.writeFileSync(opts.output, html);
     process.stderr.write(

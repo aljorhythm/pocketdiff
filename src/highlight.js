@@ -107,9 +107,13 @@ function overlayChanged(html, isChanged) {
 
 // Compact dual-scheme theme (GitHub light/dark token colours), scoped to hljs
 // classes, with its own CSS variables so it's self-contained.
+const HL_DARK =
+  '--hl-comment:#8a877e;--hl-kw:#c9a0f0;--hl-str:#5cc08a;--hl-num:#d6a060;' +
+  '--hl-title:#9aa0e8;--hl-type:#62c3bd;--hl-attr:#62c3bd;--hl-meta:#8a877e';
 const HL_CSS = `
 :root{--hl-comment:#9a978c;--hl-kw:#8a5cc0;--hl-str:#2f7d52;--hl-num:#a96b2e;--hl-title:#565d99;--hl-type:#3f8a86;--hl-attr:#3f8a86;--hl-meta:#8b887d}
-@media (prefers-color-scheme:dark){:root{--hl-comment:#8a877e;--hl-kw:#c9a0f0;--hl-str:#5cc08a;--hl-num:#d6a060;--hl-title:#9aa0e8;--hl-type:#62c3bd;--hl-attr:#62c3bd;--hl-meta:#8a877e}}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){${HL_DARK}}}
+:root[data-theme="dark"]{${HL_DARK}}
 .hljs-comment,.hljs-quote{color:var(--hl-comment);font-style:italic}
 .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-section,.hljs-doctag{color:var(--hl-kw)}
 .hljs-string,.hljs-regexp,.hljs-addition,.hljs-meta-string{color:var(--hl-str)}
