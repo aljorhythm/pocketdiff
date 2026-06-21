@@ -78,6 +78,15 @@ const userGroup = byDomain.find((g) => g.label === 'user');
 assert(userGroup && userGroup.files.length === 3, 'domain clusters user.* across folders');
 assert(byDomain.some((g) => g.label === 'order'), 'orderRepository keys to order domain');
 
+// in-page group switcher: control + per-file group keys + client data
+const semHtml = render(parser.parse(SAMPLE), {});
+assert(semHtml.includes('class="groupby"'), 'group-by control present');
+assert(/data-group="dir"[^>]*class="active"/.test(semHtml), 'dir is the default active grouping');
+assert(semHtml.includes('data-group="layer"') && semHtml.includes('data-group="domain"'), 'layer+domain options');
+assert(semHtml.includes('id="groups"'), 'groups container for client re-bucketing');
+assert(/data-layer="/.test(semHtml) && /data-domain="/.test(semHtml), 'files carry layer+domain keys');
+assert(semHtml.includes('window.__pd'), 'client gets the layer order');
+
 // rendered HTML
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');
 assert(html.includes('width=device-width'), 'has viewport meta');
