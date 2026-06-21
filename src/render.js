@@ -150,15 +150,17 @@ function renderFile(file) {
       const id = file.id;
       // Pure anchor/:target tabs — no JS — so the Preview can be opened both by
       // the in-file tab and by a jump link from the top, even in JS-disabled
-      // viewers (iOS Quick Look, in-app file previews, etc.). The preview is
-      // placed before the table so `:target ~ table.diff` can hide the diff.
+      // viewers (iOS Quick Look, in-app file previews, etc.). Markdown files
+      // default to the Preview; the diff lives in a `.diffview` wrapper so the
+      // :target toggle can hide/show it without fighting the wrap rules that
+      // set `table.diff{display}`.
       body =
         '<div class="vtabs">' +
         `<a class="vtab" href="#${id}">Diff</a>` +
         `<a class="vtab" href="#prev-${id}">Preview</a>` +
         '</div>' +
         `<div id="prev-${id}" class="preview markdown">${preview}<p class="preview-note">Preview of changed sections (new version).</p></div>` +
-        table;
+        `<div class="diffview">${table}</div>`;
     } else {
       body = table;
     }
@@ -411,14 +413,24 @@ details.filelist{border-bottom:1px solid var(--border)}
   text-decoration:none;color:var(--accent);background:transparent;border:1px solid var(--accent);
   border-radius:var(--r-pill);padding:4px 11px;transition:transform .08s ease}
 .md-chip:active{background:var(--accent);color:var(--bg);transform:scale(.97)}
-/* markdown diff/preview toggle — pure anchor/:target (no JS needed) */
+/* markdown diff/preview toggle — pure anchor/:target (no JS needed).
+   Markdown files default to the rendered Preview; the diff is one tap away.
+   Initial load (no target) and the Preview tab (prev-id) both show the preview;
+   only targeting the file element itself (the Diff tab) flips to the diff. */
 .vtabs{display:flex;gap:6px;padding:10px 16px 2px}
 .vtab{font-size:12px;padding:5px 13px;border:1px solid var(--border);border-radius:var(--r-pill);
   background:transparent;color:var(--muted);text-decoration:none;cursor:pointer}
 .vtab:active{background:var(--panel)}
-.preview{display:none;padding:2px 16px 14px;scroll-margin-top:140px}
+.preview{display:block;padding:2px 16px 14px;scroll-margin-top:140px}
+.diffview{display:none}
+details.file:target .preview{display:none}
+details.file:target .diffview{display:block}
 .preview:target{display:block}
-.preview:target ~ table.diff{display:none}
+.preview:target ~ .diffview{display:none}
+/* active-tab cue: Preview is active by default, Diff when the file is targeted */
+.vtab[href^="#prev-"]{color:var(--accent);border-color:var(--accent)}
+details.file:target .vtab[href^="#prev-"]{color:var(--muted);border-color:var(--border)}
+details.file:target .vtab:not([href^="#prev-"]){color:var(--accent);border-color:var(--accent)}
 .preview-note{color:var(--muted);font-size:12px;border-top:1px solid var(--border);
   padding-top:8px;margin:14px 0 0}
 .markdown{line-height:1.65;word-wrap:break-word}
