@@ -70,6 +70,31 @@ assert(html.includes('renamed'), 'rename badge present');
 assert(html.includes('Binary file'), 'binary handled');
 assert(!/https?:\/\/[^"']+\.(?:js|css)/.test(html), 'no external CDN assets');
 
+// UX features
+assert(html.includes('content-visibility:auto'), 'lazy render via content-visibility');
+assert(html.includes('id="totop"'), 'back-to-top control present');
+// SAMPLE has package-lock.json (noise) -> hide-noise toggle + data-noise marks
+assert(html.includes('id="hidenoise"'), 'hide-noise toggle present when noise exists');
+assert(/data-path="package-lock\.json" data-noise="1"/.test(html), 'noise file marked');
+// no hide-noise button when there's nothing noisy
+const cleanHtml = render(
+  parser.parse('diff --git a/a.js b/a.js\nindex 1..2 100644\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-a\n+b\n'),
+  {}
+);
+assert(!cleanHtml.includes('id="hidenoise"'), 'no hide-noise button without noise');
+// skipped-context marker appears between hunks of a multi-hunk file
+const twoHunk = render(
+  parser.parse(
+    'diff --git a/x.js b/x.js\nindex 1..2 100644\n--- a/x.js\n+++ b/x.js\n' +
+      '@@ -1,2 +1,2 @@\n-a\n+A\n b\n@@ -20,2 +20,2 @@\n-y\n+Y\n z\n'
+  ),
+  {}
+);
+assert(twoHunk.includes('class="skip"'), 'skip marker between hunks');
+assert(!cleanHtml.includes('class="skip"'), 'no skip marker for a single-hunk file');
+// removed words get a non-colour cue (strike-through) in CSS
+assert(html.includes('tr.del .wq{text-decoration:line-through'), 'removed words struck through');
+
 // word-level highlighting on the edited markdown line
 assert(html.includes('class="wq"'), 'word-level highlight present');
 // markdown gets a pure anchor/:target Preview tab + rendered preview
