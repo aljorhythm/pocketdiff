@@ -349,20 +349,23 @@ ${groups.map((g) => renderGroup(g, hi)).join('')}
 
 const CSS = `
 :root{
-  /* off-white canvas, off-black ink, one locked accent */
-  --bg:#fcfcfb; --fg:#1f2328; --muted:#6e7681; --border:#e7e9ee; --panel:#f5f6f8;
-  --add-bg:#eaf6ec; --add-fg:#1a7f37; --del-bg:#fdecec; --del-fg:#cf222e;
-  --add-num:#2da44e18; --del-num:#cf222e18; --code:#1f2328; --accent:#0969da;
-  --add-word:#bfe9c8; --del-word:#f7ccc6;
+  /* pocketdiff's own palette — deliberately not a brand's. Warm paper canvas,
+     soft ink, ONE restrained muted-indigo accent kept distinct from the diff
+     colours, and gentle green/red tints. Tuned to be calm and legible on a
+     small screen — the whole point of the tool. */
+  --bg:#faf9f5; --fg:#262528; --muted:#8b887d; --border:#eae6dc; --panel:#f2eee7;
+  --add-bg:#e9f2ec; --add-fg:#2f7d52; --del-bg:#f8eaed; --del-fg:#b6495a;
+  --add-num:#2f7d5214; --del-num:#b6495a14; --code:#262528; --accent:#565d99;
+  --add-word:#bfe0cb; --del-word:#eec6cd;
   /* one corner-radius system: cards / controls / pills */
   --r-card:12px; --r-ctl:8px; --r-pill:999px;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --border:#30363d; --panel:#161b22;
-    --add-bg:#12261e; --add-fg:#3fb950; --del-bg:#25171c; --del-fg:#f85149;
-    --add-num:#3fb95022; --del-num:#f8514922; --code:#e6edf3; --accent:#58a6ff;
-    --add-word:#2ea04366; --del-word:#f8514966;
+    --bg:#15161a; --fg:#e7e4dd; --muted:#8a877e; --border:#292a31; --panel:#1c1d22;
+    --add-bg:#112019; --add-fg:#5cc08a; --del-bg:#241317; --del-fg:#e07585;
+    --add-num:#5cc08a1f; --del-num:#e075851f; --code:#e7e4dd; --accent:#9096e0;
+    --add-word:#2f9c6a4d; --del-word:#cf5a6a4d;
   }
 }
 @media (prefers-reduced-motion: reduce){

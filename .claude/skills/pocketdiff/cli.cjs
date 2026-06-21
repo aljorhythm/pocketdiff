@@ -11701,8 +11701,8 @@ var require_highlight = __commonJS({
       return out;
     }
     var HL_CSS = `
-:root{--hl-comment:#6e7781;--hl-kw:#cf222e;--hl-str:#0a3069;--hl-num:#0550ae;--hl-title:#8250df;--hl-type:#953800;--hl-attr:#0a3069;--hl-meta:#116329}
-@media (prefers-color-scheme:dark){:root{--hl-comment:#8b949e;--hl-kw:#ff7b72;--hl-str:#a5d6ff;--hl-num:#79c0ff;--hl-title:#d2a8ff;--hl-type:#ffa657;--hl-attr:#a5d6ff;--hl-meta:#7ee787}}
+:root{--hl-comment:#9a978c;--hl-kw:#8a5cc0;--hl-str:#2f7d52;--hl-num:#a96b2e;--hl-title:#565d99;--hl-type:#3f8a86;--hl-attr:#3f8a86;--hl-meta:#8b887d}
+@media (prefers-color-scheme:dark){:root{--hl-comment:#8a877e;--hl-kw:#c9a0f0;--hl-str:#5cc08a;--hl-num:#d6a060;--hl-title:#9aa0e8;--hl-type:#62c3bd;--hl-attr:#62c3bd;--hl-meta:#8a877e}}
 .hljs-comment,.hljs-quote{color:var(--hl-comment);font-style:italic}
 .hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-section,.hljs-doctag{color:var(--hl-kw)}
 .hljs-string,.hljs-regexp,.hljs-addition,.hljs-meta-string{color:var(--hl-str)}
@@ -11986,20 +11986,23 @@ ${groups.map((g) => renderGroup(g, hi)).join("")}
     }
     var CSS = `
 :root{
-  /* off-white canvas, off-black ink, one locked accent */
-  --bg:#fcfcfb; --fg:#1f2328; --muted:#6e7681; --border:#e7e9ee; --panel:#f5f6f8;
-  --add-bg:#eaf6ec; --add-fg:#1a7f37; --del-bg:#fdecec; --del-fg:#cf222e;
-  --add-num:#2da44e18; --del-num:#cf222e18; --code:#1f2328; --accent:#0969da;
-  --add-word:#bfe9c8; --del-word:#f7ccc6;
+  /* pocketdiff's own palette \u2014 deliberately not a brand's. Warm paper canvas,
+     soft ink, ONE restrained muted-indigo accent kept distinct from the diff
+     colours, and gentle green/red tints. Tuned to be calm and legible on a
+     small screen \u2014 the whole point of the tool. */
+  --bg:#faf9f5; --fg:#262528; --muted:#8b887d; --border:#eae6dc; --panel:#f2eee7;
+  --add-bg:#e9f2ec; --add-fg:#2f7d52; --del-bg:#f8eaed; --del-fg:#b6495a;
+  --add-num:#2f7d5214; --del-num:#b6495a14; --code:#262528; --accent:#565d99;
+  --add-word:#bfe0cb; --del-word:#eec6cd;
   /* one corner-radius system: cards / controls / pills */
   --r-card:12px; --r-ctl:8px; --r-pill:999px;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#0d1117; --fg:#e6edf3; --muted:#8b949e; --border:#30363d; --panel:#161b22;
-    --add-bg:#12261e; --add-fg:#3fb950; --del-bg:#25171c; --del-fg:#f85149;
-    --add-num:#3fb95022; --del-num:#f8514922; --code:#e6edf3; --accent:#58a6ff;
-    --add-word:#2ea04366; --del-word:#f8514966;
+    --bg:#15161a; --fg:#e7e4dd; --muted:#8a877e; --border:#292a31; --panel:#1c1d22;
+    --add-bg:#112019; --add-fg:#5cc08a; --del-bg:#241317; --del-fg:#e07585;
+    --add-num:#5cc08a1f; --del-num:#e075851f; --code:#e7e4dd; --accent:#9096e0;
+    --add-word:#2f9c6a4d; --del-word:#cf5a6a4d;
   }
 }
 @media (prefers-reduced-motion: reduce){
