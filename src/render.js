@@ -310,9 +310,11 @@ function render(rawFiles, opts = {}) {
     ? '<button id="hidenoise" type="button" title="Hide generated/lockfile noise">Hide noise</button>'
     : '';
   const generated = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  // Force a theme with --light / --dark; default (no attribute) follows the system.
+  const themeAttr = opts.theme === 'dark' || opts.theme === 'light' ? ` data-theme="${opts.theme}"` : '';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${themeAttr}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -347,6 +349,13 @@ ${groups.map((g) => renderGroup(g, hi)).join('')}
 </html>`;
 }
 
+// Dark palette values, shared by the auto (media-query) and forced (--dark) rules.
+const DARK_VARS =
+  '--bg:#15161a;--fg:#e7e4dd;--muted:#8a877e;--border:#292a31;--panel:#1c1d22;' +
+  '--add-bg:#112019;--add-fg:#5cc08a;--del-bg:#241317;--del-fg:#e07585;' +
+  '--add-num:#5cc08a1f;--del-num:#e075851f;--code:#e7e4dd;--accent:#9096e0;' +
+  '--add-word:#2f9c6a4d;--del-word:#cf5a6a4d';
+
 const CSS = `
 :root{
   /* pocketdiff's own palette — deliberately not a brand's. Warm paper canvas,
@@ -360,14 +369,12 @@ const CSS = `
   /* one corner-radius system: cards / controls / pills */
   --r-card:12px; --r-ctl:8px; --r-pill:999px;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#15161a; --fg:#e7e4dd; --muted:#8a877e; --border:#292a31; --panel:#1c1d22;
-    --add-bg:#112019; --add-fg:#5cc08a; --del-bg:#241317; --del-fg:#e07585;
-    --add-num:#5cc08a1f; --del-num:#e075851f; --code:#e7e4dd; --accent:#9096e0;
-    --add-word:#2f9c6a4d; --del-word:#cf5a6a4d;
-  }
-}
+/* Dark palette applies (a) automatically with the system, but only when no theme
+   is forced, and (b) explicitly when forced with --dark (data-theme="dark").
+   --light forces light by setting data-theme="light", which the media query
+   below intentionally excludes. */
+@media (prefers-color-scheme: dark){:root:not([data-theme]){${DARK_VARS}}}
+:root[data-theme="dark"]{${DARK_VARS}}
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important;scroll-behavior:auto !important}
 }

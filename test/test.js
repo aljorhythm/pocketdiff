@@ -127,6 +127,16 @@ assert(hl.includes('hljs-'), 'syntax highlighting applied with highlight:true');
 assert(hl.includes('--hl-kw'), 'highlight theme injected only when enabled');
 // the word-level diff still composes with highlighting (both span types present)
 assert(hl.includes('class="wq"'), 'word-diff preserved alongside highlighting');
+
+// theme: default follows the system (no attribute); --light/--dark force it
+assert(/<html lang="en">/.test(html), 'default theme follows the system (no data-theme)');
+const dark = render(parser.parse(SAMPLE), { theme: 'dark' });
+assert(dark.includes('<html lang="en" data-theme="dark">'), 'forced dark sets data-theme');
+assert(dark.includes(':root[data-theme="dark"]{'), 'forced-dark vars present');
+const light = render(parser.parse(SAMPLE), { theme: 'light' });
+assert(light.includes('<html lang="en" data-theme="light">'), 'forced light sets data-theme');
+// a bogus theme value is ignored (stays auto)
+assert(/<html lang="en">/.test(render(parser.parse(SAMPLE), { theme: 'x' })), 'unknown theme ignored');
 // markdown files surfaced in a top bar, linking to the preview
 assert(html.includes('class="mdbar"'), 'markdown bar present');
 assert(html.includes(`class="md-chip" href="#prev-${mdFile.id}"`), 'md chip links to preview');
