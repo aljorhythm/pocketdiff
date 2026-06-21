@@ -116,6 +116,13 @@ assert(spaced.includes('class="preview markdown"'), 'markdown detected despite t
 assert(spaced.includes('class="mdbar"'), 'spaced-name markdown surfaced in the bar');
 assert(!/Naming brief\.md\t/.test(spaced), 'trailing tab stripped from the path');
 
+// progressive enhancement: JS-only controls hidden unless JS runs; the grouped
+// jump-index is open by default so a no-JS viewer can navigate via anchors
+assert(html.includes("className+=' js'"), 'early script marks JS availability');
+assert(html.includes('.controls,.groupby{display:none}'), 'JS-only controls hidden by default');
+assert(html.includes('html.js .controls{display:flex'), 'controls revealed only with JS');
+assert(/class="filelist" open/.test(html), 'jump index open by default (no-JS nav)');
+
 // rendered HTML
 assert(html.startsWith('<!DOCTYPE html>'), 'has doctype');
 assert(html.includes('width=device-width'), 'has viewport meta');
