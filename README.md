@@ -1,12 +1,30 @@
 # pocketdiff
 
-Turn a `git diff` into a **single, self-contained HTML file** built for reviewing
-code **on the go** — phone or tablet. No server, no build step, no internet needed
-to open it. Just pipe a diff in and AirDrop / download the result to your device.
+### Review code diffs on your phone — actually comfortably.
 
-Reviewing agent-generated diffs on GitHub mobile is painful: lines wrap badly,
-lockfiles drown out real changes, and there's no way to filter or group. pocketdiff
-fixes exactly that.
+`pocketdiff` turns any `git diff`, pull request, or commit into **one
+self-contained HTML file** built for a small screen: code that doesn't wrap into
+mush, noise collapsed, files grouped, markdown rendered. No server, no app, no
+internet to open it — pipe a diff in, then AirDrop or download the file and read.
+
+<p align="center">
+  <img src="docs/mobile-hero.png" alt="pocketdiff on mobile — grouped files, collapsed lockfile, word-level highlights" width="31%" />
+  <img src="docs/mobile-markdown.png" alt="Markdown Diff/Preview toggle rendering a changed table" width="31%" />
+  <img src="docs/mobile-dark.png" alt="Dark mode" width="31%" />
+</p>
+
+```bash
+# pipe any diff in — that's it
+git diff main...HEAD | npx pocketdiff -o review.html
+
+# …or paste a PR / commit URL (GitHub, GitLab, Bitbucket)
+npx pocketdiff -o review.html https://github.com/owner/repo/pull/42
+```
+
+**Why?** Reviewing agent-generated and large diffs on GitHub mobile is painful:
+lines wrap into mush, lockfiles drown out the real changes, and there's no way to
+filter or group. Diffs are getting bigger and more of them are written by AI —
+pocketdiff makes reading them on the couch actually bearable.
 
 ## Features
 
@@ -29,6 +47,12 @@ fixes exactly that.
 > Note: a unified diff only contains changed hunks (plus a little context), not the
 > whole file — so the markdown preview shows the *changed sections*, not the full
 > rendered document.
+
+Roomier on a tablet or desktop, same single file:
+
+<p align="center">
+  <img src="docs/desktop.png" alt="pocketdiff on a wider screen — file index, folder groups, side-by-side density" width="80%" />
+</p>
 
 ## Usage
 
