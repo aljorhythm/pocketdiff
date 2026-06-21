@@ -1,0 +1,124 @@
+'use strict';
+
+// Opt-in syntax highlighting (`--highlight`). highlight.js *core* plus a curated
+// set of common languages — registering only these keeps the self-contained
+// bundle small (full highlight.js is ~1 MB; this subset is a fraction). Unknown
+// languages fall back to plain escaped text.
+const hljs = require('highlight.js/lib/core');
+
+const LANGS = {
+  javascript: require('highlight.js/lib/languages/javascript'),
+  typescript: require('highlight.js/lib/languages/typescript'),
+  python: require('highlight.js/lib/languages/python'),
+  json: require('highlight.js/lib/languages/json'),
+  bash: require('highlight.js/lib/languages/bash'),
+  go: require('highlight.js/lib/languages/go'),
+  rust: require('highlight.js/lib/languages/rust'),
+  xml: require('highlight.js/lib/languages/xml'),
+  css: require('highlight.js/lib/languages/css'),
+  yaml: require('highlight.js/lib/languages/yaml'),
+};
+for (const [name, def] of Object.entries(LANGS)) hljs.registerLanguage(name, def);
+
+// File extension -> registered language.
+const EXT = {
+  js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript',
+  ts: 'typescript', tsx: 'typescript', mts: 'typescript', cts: 'typescript',
+  py: 'python', json: 'json',
+  sh: 'bash', bash: 'bash', zsh: 'bash',
+  go: 'go', rs: 'rust',
+  html: 'xml', xml: 'xml', vue: 'xml', svg: 'xml',
+  css: 'css', scss: 'css',
+  yml: 'yaml', yaml: 'yaml',
+};
+
+function langFor(path) {
+  const m = /\.([a-z0-9]+)$/i.exec(path || '');
+  return m ? EXT[m[1].toLowerCase()] || null : null;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Highlight one line; returns escaped HTML with hljs token spans, or plain
+// escaped text if the language is unknown or highlighting throws.
+function highlightLine(code, lang) {
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+    } catch {
+      /* fall through to plain */
+    }
+  }
+  return esc(code);
+}
+
+// Overlay word-level "changed" spans onto already-highlighted HTML. `isChanged`
+// is a predicate over raw character offsets. We close the `.wq` wrapper before
+// every tag and reopen it on the next changed char, so the highlight spans and
+// the change spans stay validly nested even when a changed run crosses a token.
+function overlayChanged(html, isChanged) {
+  let out = '';
+  let i = 0;
+  let raw = 0;
+  let open = false;
+  const openWq = () => {
+    if (!open) {
+      out += '<span class="wq">';
+      open = true;
+    }
+  };
+  const closeWq = () => {
+    if (open) {
+      out += '</span>';
+      open = false;
+    }
+  };
+  while (i < html.length) {
+    const ch = html[i];
+    if (ch === '<') {
+      const end = html.indexOf('>', i);
+      closeWq();
+      out += html.slice(i, end + 1);
+      i = end + 1;
+    } else if (ch === '&') {
+      const end = html.indexOf(';', i);
+      if (isChanged(raw)) openWq();
+      else closeWq();
+      out += html.slice(i, end + 1);
+      raw++;
+      i = end + 1;
+    } else {
+      if (isChanged(raw)) openWq();
+      else closeWq();
+      out += ch;
+      raw++;
+      i++;
+    }
+  }
+  closeWq();
+  return out;
+}
+
+// Compact dual-scheme theme (GitHub light/dark token colours), scoped to hljs
+// classes, with its own CSS variables so it's self-contained.
+const HL_CSS = `
+:root{--hl-comment:#6e7781;--hl-kw:#cf222e;--hl-str:#0a3069;--hl-num:#0550ae;--hl-title:#8250df;--hl-type:#953800;--hl-attr:#0a3069;--hl-meta:#116329}
+@media (prefers-color-scheme:dark){:root{--hl-comment:#8b949e;--hl-kw:#ff7b72;--hl-str:#a5d6ff;--hl-num:#79c0ff;--hl-title:#d2a8ff;--hl-type:#ffa657;--hl-attr:#a5d6ff;--hl-meta:#7ee787}}
+.hljs-comment,.hljs-quote{color:var(--hl-comment);font-style:italic}
+.hljs-keyword,.hljs-selector-tag,.hljs-literal,.hljs-section,.hljs-doctag{color:var(--hl-kw)}
+.hljs-string,.hljs-regexp,.hljs-addition,.hljs-meta-string{color:var(--hl-str)}
+.hljs-number,.hljs-symbol,.hljs-bullet{color:var(--hl-num)}
+.hljs-title,.hljs-title.function_,.hljs-name,.hljs-selector-id,.hljs-selector-class{color:var(--hl-title)}
+.hljs-type,.hljs-class .hljs-title,.hljs-built_in,.hljs-builtin-name{color:var(--hl-type)}
+.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-template-variable,.hljs-property,.hljs-params{color:var(--hl-attr)}
+.hljs-meta,.hljs-tag{color:var(--hl-meta)}
+.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:600}
+`;
+
+module.exports = { langFor, highlightLine, overlayChanged, HL_CSS };

@@ -118,6 +118,15 @@ const indented = render(
 );
 assert(indented.includes('<li>'), 'indented list renders as a list in the preview');
 assert(!/<pre>/.test(indented), 'indented changed section is not a code block');
+
+// opt-in syntax highlighting (default OFF, no behaviour change)
+assert(!html.includes('hljs-'), 'no syntax highlighting by default');
+assert(!html.includes('--hl-kw'), 'no highlight theme injected by default');
+const hl = render(parser.parse(SAMPLE), { highlight: true });
+assert(hl.includes('hljs-'), 'syntax highlighting applied with highlight:true');
+assert(hl.includes('--hl-kw'), 'highlight theme injected only when enabled');
+// the word-level diff still composes with highlighting (both span types present)
+assert(hl.includes('class="wq"'), 'word-diff preserved alongside highlighting');
 // markdown files surfaced in a top bar, linking to the preview
 assert(html.includes('class="mdbar"'), 'markdown bar present');
 assert(html.includes(`class="md-chip" href="#prev-${mdFile.id}"`), 'md chip links to preview');

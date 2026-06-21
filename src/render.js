@@ -2,6 +2,7 @@
 
 const MarkdownIt = require('markdown-it');
 const { classify, group } = require('./group');
+const { langFor, highlightLine, overlayChanged, HL_CSS } = require('./highlight');
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false });
 
@@ -29,7 +30,10 @@ function tokenize(s) {
   return s.match(/\s+|[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g) || [];
 }
 
-function wordDiff(a, b) {
+// Per-side change segments from an LCS over tokens: each side is a list of
+// { text, changed } runs. Kept separate from rendering so the same diff can be
+// emitted plainly (wq spans) or composed with syntax highlighting.
+function wordDiffSegs(a, b) {
   const A = tokenize(a);
   const B = tokenize(b);
   const m = A.length;
@@ -41,28 +45,55 @@ function wordDiff(a, b) {
         A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
     }
   }
+  const aSegs = [];
+  const bSegs = [];
+  const push = (arr, text, changed) => {
+    const last = arr[arr.length - 1];
+    if (last && last.changed === changed) last.text += text;
+    else arr.push({ text, changed });
+  };
   let i = 0;
   let j = 0;
-  let oa = '';
-  let ob = '';
-  const mark = (t) => `<span class="wq">${esc(t)}</span>`;
   while (i < m && j < n) {
     if (A[i] === B[j]) {
-      oa += esc(A[i]);
-      ob += esc(B[j]);
+      push(aSegs, A[i], false);
+      push(bSegs, B[j], false);
       i++;
       j++;
     } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-      oa += mark(A[i]);
+      push(aSegs, A[i], true);
       i++;
     } else {
-      ob += mark(B[j]);
+      push(bSegs, B[j], true);
       j++;
     }
   }
-  while (i < m) oa += mark(A[i++]);
-  while (j < n) ob += mark(B[j++]);
-  return { oa, ob };
+  while (i < m) push(aSegs, A[i++], true);
+  while (j < n) push(bSegs, B[j++], true);
+  return { aSegs, bSegs };
+}
+
+function segsHtml(segs) {
+  return segs
+    .map((s) => (s.changed ? `<span class="wq">${esc(s.text)}</span>` : esc(s.text)))
+    .join('');
+}
+
+function segsChanged(segs) {
+  const flags = [];
+  for (const s of segs) for (let k = 0; k < s.text.length; k++) flags.push(s.changed);
+  return (idx) => flags[idx] === true;
+}
+
+// One code cell: optional word-diff segments composed with optional syntax
+// highlighting. `segs` is the per-side segment array (or null for context /
+// unpaired lines); `lang`/`hi` enable highlighting.
+function codeCell(content, segs, lang, hi) {
+  if (hi) {
+    const html = highlightLine(content, lang);
+    return segs ? overlayChanged(html, segsChanged(segs)) : html;
+  }
+  return segs ? segsHtml(segs) : esc(content);
 }
 
 function fileBadge(file) {
@@ -81,7 +112,7 @@ function row(cls, sign, num, codeHtml) {
   return `<tr class="${cls}"><td class="ln">${num == null ? '' : num}</td><td class="code"><span class="sign">${sign}</span>${codeHtml}</td></tr>`;
 }
 
-function renderHunk(hunk) {
+function renderHunk(hunk, lang, hi) {
   let rows = `<tr class="hunk-head"><td class="ln"></td><td class="code">${esc(hunk.content)}</td></tr>`;
   const ch = hunk.changes;
   for (let k = 0; k < ch.length; ) {
@@ -94,16 +125,16 @@ function renderHunk(hunk) {
       while (k < ch.length && ch[k].type === 'insert') ins.push(ch[k++]);
       const pairs = Math.min(dels.length, ins.length);
       const diffs = [];
-      for (let p = 0; p < pairs; p++) diffs.push(wordDiff(dels[p].content, ins[p].content));
+      for (let p = 0; p < pairs; p++) diffs.push(wordDiffSegs(dels[p].content, ins[p].content));
       dels.forEach((d, p) =>
-        (rows += row('del', '-', d.lineNumber, p < pairs ? diffs[p].oa : esc(d.content)))
+        (rows += row('del', '-', d.lineNumber, codeCell(d.content, p < pairs ? diffs[p].aSegs : null, lang, hi)))
       );
       ins.forEach((d, p) =>
-        (rows += row('ins', '+', d.lineNumber, p < pairs ? diffs[p].ob : esc(d.content)))
+        (rows += row('ins', '+', d.lineNumber, codeCell(d.content, p < pairs ? diffs[p].bSegs : null, lang, hi)))
       );
     } else {
       const c = ch[k++];
-      rows += row('ctx', ' ', c.newLineNumber, esc(c.content));
+      rows += row('ctx', ' ', c.newLineNumber, codeCell(c.content, null, lang, hi));
     }
   }
   return rows;
@@ -145,7 +176,8 @@ function renderMarkdownPreview(file) {
   return md.render(blocks.join('\n\n'));
 }
 
-function renderFile(file) {
+function renderFile(file, hi) {
+  const lang = hi ? langFor(file.path) : null;
   const name = basename(file.path);
   const dir = file.dir ? file.dir + '/' : '';
   const renameInfo =
@@ -165,7 +197,7 @@ function renderFile(file) {
     const skip =
       '<tr class="skip" title="Only changed sections are in a diff — the full file isn\'t included">' +
       '<td class="ln" aria-hidden="true">⋯</td><td class="code">unchanged lines not shown</td></tr>';
-    const rows = file.hunks.map(renderHunk).join(skip);
+    const rows = file.hunks.map((h) => renderHunk(h, lang, hi)).join(skip);
     const table = '<table class="diff">' + rows + '</table>';
     if (isMarkdown(file.path)) {
       const preview = renderMarkdownPreview(file);
@@ -249,7 +281,7 @@ function renderFileList(groups, count) {
 </details>`;
 }
 
-function renderGroup(g) {
+function renderGroup(g, hi) {
   const label = g.dir || '(root)';
   const counts = `<span class="add">+${g.additions}</span> <span class="del">−${g.deletions}</span>`;
   return `
@@ -259,7 +291,7 @@ function renderGroup(g) {
     <span class="gname">${esc(label)}</span>
     <span class="gmeta">${g.files.length} file${g.files.length === 1 ? '' : 's'} ${counts}</span>
   </summary>
-  ${g.files.map(renderFile).join('')}
+  ${g.files.map((f) => renderFile(f, hi)).join('')}
 </details>`;
 }
 
@@ -268,6 +300,7 @@ function render(rawFiles, opts = {}) {
   files.forEach((f, i) => {
     f.id = 'f' + i;
   });
+  const hi = !!opts.highlight;
   const groups = group(files);
   const totalAdd = files.reduce((s, f) => s + f.additions, 0);
   const totalDel = files.reduce((s, f) => s + f.deletions, 0);
@@ -284,7 +317,7 @@ function render(rawFiles, opts = {}) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
-<style>${CSS}</style>
+<style>${CSS}${hi ? HL_CSS : ''}</style>
 </head>
 <body class="wrap">
 <header class="topbar">
@@ -305,7 +338,7 @@ function render(rawFiles, opts = {}) {
 <main>
 ${renderMarkdownBar(files)}
 ${renderFileList(groups, files.length)}
-${groups.map(renderGroup).join('')}
+${groups.map((g) => renderGroup(g, hi)).join('')}
 </main>
 <a id="totop" href="#" class="totop" title="Back to top" aria-label="Back to top" hidden>↑</a>
 <footer>Generated by pocketdiff · ${generated}</footer>

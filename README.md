@@ -99,9 +99,19 @@ repo tells you exactly which token to set.
 |------|-------------|
 | `-o, --output <file>` | Write HTML to a file (default: stdout) |
 | `-t, --title <text>`  | Title shown in the header |
+| `--highlight`         | Opt-in syntax highlighting for common languages (off by default) |
 | `-h, --help`          | Show help |
 
 Anything after `--` is passed straight to `git diff`.
+
+`--highlight` colours code for common languages (JS/TS, Python, JSON, Bash, Go,
+Rust, HTML/XML, CSS, YAML); unknown languages fall back to plain text, and the
+word-level change highlighting still shows on top. It's off by default to keep
+output minimal:
+
+```bash
+git diff main...HEAD | npx pocketdiff --highlight -o review.html
+```
 
 ## Examples
 
