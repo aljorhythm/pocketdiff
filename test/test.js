@@ -107,6 +107,17 @@ assert(html.includes('<strong>realtime</strong>'), 'markdown rendered in preview
 assert(html.includes('<div class="diffview">'), 'markdown diff wrapped for toggling');
 assert(/\.preview\{display:block[^}]*\}/.test(html), 'preview shown by default');
 assert(html.includes('.diffview{display:none}'), 'markdown diff hidden by default');
+// tab/indented changed sections are dedented so they render as real markdown
+// (a list) instead of an indented code block (markdown-it's 4-space/tab rule)
+const indented = render(
+  parser.parse(
+    'diff --git a/d.md b/d.md\nindex 1..2 100644\n--- a/d.md\n+++ b/d.md\n' +
+      '@@ -1,2 +1,3 @@\n\t- [Old](u)\n+\t- [New](u) - desc\n\t- [Keep](u)\n'
+  ),
+  {}
+);
+assert(indented.includes('<li>'), 'indented list renders as a list in the preview');
+assert(!/<pre>/.test(indented), 'indented changed section is not a code block');
 // markdown files surfaced in a top bar, linking to the preview
 assert(html.includes('class="mdbar"'), 'markdown bar present');
 assert(html.includes(`class="md-chip" href="#prev-${mdFile.id}"`), 'md chip links to preview');
