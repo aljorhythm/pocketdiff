@@ -18,9 +18,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 // Locate the pocketdiff CLI robustly. This skill runs both ways: nested inside
 // the repo (`<repo>/.claude/skills/pocketdiff/`) AND installed globally into
-// `~/.claude/skills/pocketdiff/`, where a fixed `../../../bin/cli.js` points
-// at the wrong place. Resolution order: explicit override, then walk up for
-// `bin/cli.js`, then a resolved `pocketdiff` package install.
+// `~/.claude/skills/pocketdiff/`. Resolution order:
+//   1. POCKETDIFF_CLI override
+//   2. live `bin/cli.js` when running inside the repo (dev — always fresh)
+//   3. the self-contained `cli.cjs` bundle shipped next to this driver, which
+//      inlines all deps so it runs with just Node — no node_modules, no install
+//      (this is what makes the *installed* skill self-contained)
+//   4. a resolved `pocketdiff` package, if present
 function findCli() {
   if (process.env.POCKETDIFF_CLI) return process.env.POCKETDIFF_CLI;
   let dir = here;
@@ -31,14 +35,16 @@ function findCli() {
     if (parent === dir) break; // reached filesystem root
     dir = parent;
   }
+  const bundled = join(here, 'cli.cjs');
+  if (existsSync(bundled)) return bundled;
   try {
     return createRequire(import.meta.url).resolve('pocketdiff/bin/cli.js');
   } catch {
     /* pocketdiff not installed as a package */
   }
   throw new Error(
-    'could not locate pocketdiff bin/cli.js — run from inside the pocketdiff repo,\n' +
-      'install pocketdiff (npm i -g pocketdiff), or set POCKETDIFF_CLI to its path.'
+    'could not locate the pocketdiff CLI — run from inside the pocketdiff repo,\n' +
+      'use the bundled cli.cjs in this skill dir, or set POCKETDIFF_CLI to its path.'
   );
 }
 

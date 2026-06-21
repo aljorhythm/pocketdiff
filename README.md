@@ -185,9 +185,17 @@ so it's available in every project. (`-y` skips the npx download prompt; `-g`
 installs globally — drop it to install into the current project's
 `.claude/skills/` instead.) Then invoke it in Claude Code with `/pocketdiff`.
 
+**The installed skill is self-contained.** It ships a bundled `cli.cjs` with every
+dependency inlined, so it runs with **just a Node runtime** — no package manager,
+no `npm install`, no `node_modules`:
+
+```bash
+node "$HOME/.claude/skills/pocketdiff/cli.cjs" -o review.html main...HEAD
+```
+
 > The skill installs straight from this GitHub repo — it does not require the npm
-> package. (There is no `npx skill install`; `npx skills add <owner>/<repo>` is the
-> ecosystem-standard installer.)
+> package. (`npx skills add <owner>/<repo>` is the ecosystem-standard installer.)
+> The bundle is generated from source with `npm run bundle` (esbuild).
 
 ## How it works
 

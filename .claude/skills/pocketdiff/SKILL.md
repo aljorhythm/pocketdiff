@@ -5,33 +5,45 @@ description: Run, build, smoke-test, and use pocketdiff — the CLI that turns a
 
 # Run pocketdiff
 
-pocketdiff is a **CLI** (`bin/cli.js`, published bin name `pocketdiff`). It reads a
-unified diff and writes **one self-contained HTML file** (all CSS/JS inlined, no
-network) designed for reviewing code on a phone or tablet. There is no server and
-no GUI — the deliverable is the HTML file, which you open in any browser.
+pocketdiff is a **CLI** that reads a unified diff and writes **one self-contained
+HTML file** (all CSS/JS inlined, no network) designed for reviewing code on a
+phone or tablet. There is no server and no GUI — the deliverable is the HTML file,
+which you open in any browser.
 
-Paths below are relative to the repo root (`<unit>`).
+## Self-contained — only Node is required
 
-## Prerequisites
-
-- Node.js >= 16 (developed on Node 22).
-- `git` only if you generate from the working tree / a range.
+This skill ships its own bundled CLI at **`cli.cjs`** (next to this file), with
+all dependencies inlined. **No package manager, no `npm install`, no
+`node_modules`** — just a Node runtime (>= 16). Run it directly:
 
 ```bash
-npm install
+# from anywhere — works on the globally-installed skill
+node "$HOME/.claude/skills/pocketdiff/cli.cjs" -o review.html <input>
 ```
+
+`git` is only needed if you generate from the working tree / a range. The
+`bin/cli.js` and `npm install` shown below are the **repo-development** path; the
+installed skill needs neither.
 
 ## Run (agent path): smoke-test the whole flow
 
-The driver generates an HTML review from a sample multi-file diff and asserts the
-output is self-contained and has the key review features. No browser needed.
+The driver finds the CLI automatically (live `bin/cli.js` in the repo, else the
+bundled `cli.cjs`), renders a sample multi-file diff, and asserts the output is
+self-contained with the key review features. No browser, no install needed.
 
 ```bash
-node .claude/skills/pocketdiff/driver.mjs
+node "$HOME/.claude/skills/pocketdiff/driver.mjs"   # installed skill
+# or, inside the repo:  node .claude/skills/pocketdiff/driver.mjs
 ```
 
 Expected: a list of `PASS` lines and `pocketdiff: OK` (exit 0). It prints the path
 of the generated HTML so you can open it.
+
+## Repo development (only if you cloned the source)
+
+The commands in the rest of this file use `node bin/cli.js` and assume the repo +
+`npm install`. To regenerate the bundled `cli.cjs` after changing `src/`, run
+`npm run bundle`.
 
 ## Generate a review (the actual user command)
 
