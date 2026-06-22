@@ -9,8 +9,18 @@ internet to open it — pipe a diff in, then AirDrop or download the file and re
 
 <p align="center">
   <img src="docs/mobile-hero.png" alt="pocketdiff on mobile — grouped files, collapsed lockfile, word-level highlights" width="31%" />
-  <img src="docs/mobile-markdown.png" alt="Markdown Diff/Preview toggle rendering a changed table" width="31%" />
-  <img src="docs/mobile-dark.png" alt="Dark mode" width="31%" />
+  <img src="docs/mobile-markdown.png" alt="A changed README rendered as real markdown — headings, bold, link, table" width="31%" />
+  <img src="docs/mobile-mddiff.png" alt="The same markdown rendered as a diff — added blocks green, removed struck-through red" width="31%" />
+</p>
+
+<p align="center">
+  <em>Left to right: the file index with a collapsed lockfile and word-level
+  highlights · a changed markdown file <strong>rendered</strong> · the same file as a
+  <strong>rendered diff</strong> (added green, removed struck-through). Dark mode follows the system:</em>
+</p>
+
+<p align="center">
+  <img src="docs/mobile-dark.png" alt="The markdown-diff view in dark mode" width="31%" />
 </p>
 
 ```bash
@@ -62,41 +72,60 @@ Roomier on a tablet or desktop, same single file:
 ## Usage
 
 ```bash
-# pipe a diff in (the primary path)
-git diff main...HEAD | npx pocketdiff -o review.html
-
-# or pass an input — auto-detected as a git range, a local file, or a URL
-npx pocketdiff -o review.html main...HEAD
-npx pocketdiff -o review.html changes.diff
-npx pocketdiff -o review.html https://github.com/owner/repo/pull/42
-
-# default: diff the working tree
-npx pocketdiff -o review.html
+npx pocketdiff [options] [input]
 ```
 
-Then open `review.html` on your phone or tablet.
+One positional `input`, auto-detected. Output goes to stdout unless you pass
+`-o`. Then open the file on your phone or tablet.
 
-### Input (auto-detected, best effort)
+```bash
+# the common cases
+git diff main...HEAD | npx pocketdiff -o review.html          # pipe a diff
+npx pocketdiff -o review.html https://github.com/o/r/pull/42  # a PR / commit URL
+npx pocketdiff -o review.html                                 # working tree
+```
 
-A single positional argument is classified automatically:
+### Input (auto-detected)
 
-| Input | Treated as |
-|-------|-----------|
-| `https://…` | a URL to fetch — GitHub, GitLab, and Bitbucket PR/MR, commit, and compare pages are mapped to the diff each host serves; any other raw `.diff`/`.patch` URL is fetched directly |
-| an existing file | a local unified-diff file |
-| anything else | arguments for `git diff` (e.g. `main...HEAD`, `HEAD~3`) |
-| (omitted) | piped stdin if present, otherwise the working tree |
+| `input` | Treated as |
+|---------|-----------|
+| `https://…` | a URL to fetch (see hosts below) |
+| an existing file | a local unified-diff (`.diff`/`.patch`) |
+| anything else | arguments for `git diff` (e.g. `main...HEAD`, `HEAD~3`, `<sha>^!`) |
+| *(omitted)* | piped stdin if present, else the working tree |
 
-**Private repos** — set the matching token and pocketdiff sends the right auth header:
+```bash
+npx pocketdiff -o review.html main...HEAD     # a git range
+npx pocketdiff -o review.html changes.diff    # a local diff file
+npx pocketdiff -o review.html <sha>^!         # a single commit (^! = parent..commit)
+git show <sha> | npx pocketdiff -o review.html   # …or pipe it (merge: add -m)
+```
 
-| Host | Env var | Token needs |
+### URLs (PR / commit / compare pages)
+
+Paste the **page** URL — pocketdiff maps it to the diff each host serves. Any
+other raw `.diff`/`.patch` URL is fetched as-is.
+
+| Host | Recognised URLs |
+|------|-----------------|
+| **GitHub** | `/pull/N`, `/commit/<sha>`, `/compare/a...b` |
+| **GitLab** (gitlab.com + self-managed) | `/-/merge_requests/N`, `/-/commit/<sha>`, `/-/compare/a...b` |
+| **Bitbucket** | `/pull-requests/N`, `/commits/<sha>` |
+
+```bash
+# real public commits that edit a markdown file (great for the markdown preview)
+npx pocketdiff -o review.html https://github.com/sindresorhus/awesome/commit/24da1c60ba400087006af9ff02accdb4a53472b6
+npx pocketdiff -o review.html https://gitlab.com/gitlab-org/gitlab-runner/-/commit/9962b4022534a1272a3c610b9fee1c4833aa340c
+```
+
+**Private repos** — set the matching token; pocketdiff sends the right auth
+header. A `403`/`404` error tells you exactly which one to set.
+
+| Host | Env var | Token scope |
 |------|---------|-------------|
-| GitHub | `GITHUB_TOKEN` / `GH_TOKEN` | `repo` scope |
-| GitLab (gitlab.com + self-managed) | `GITLAB_TOKEN` / `GL_TOKEN` | `read_api` / `read_repository` |
+| GitHub | `GITHUB_TOKEN` / `GH_TOKEN` | `repo` |
+| GitLab | `GITLAB_TOKEN` / `GL_TOKEN` | `read_api` / `read_repository` |
 | Bitbucket | `BITBUCKET_TOKEN` | `repository:read` |
-
-If a fetch fails, the error says how to recover — e.g. a `404`/`403` on a private
-repo tells you exactly which token to set.
 
 ### Options
 
@@ -104,99 +133,24 @@ repo tells you exactly which token to set.
 |------|-------------|
 | `-o, --output <file>` | Write HTML to a file (default: stdout) |
 | `-t, --title <text>`  | Title shown in the header |
-| `--highlight`         | Opt-in syntax highlighting for common languages (off by default) |
-| `--light`, `--dark`   | Force the colour theme (default: follow the system) |
 | `--group <how>`       | Group files by `dir` (default), `layer`, or `domain` |
+| `--highlight`         | Syntax highlighting for common languages (off by default) |
+| `--light` / `--dark`  | Force the colour theme (default: follow the system) |
 | `-h, --help`          | Show help |
 
 Anything after `--` is passed straight to `git diff`.
 
-`--highlight` colours code for common languages (JS/TS, Python, JSON, Bash, Go,
-Rust, HTML/XML, CSS, YAML); unknown languages fall back to plain text, and the
-word-level change highlighting still shows on top. It's off by default to keep
-output minimal:
+- **`--group`** reorganises a sprawling diff by *semantics* instead of folders
+  (best-effort): `layer` clusters by architectural role read from filenames
+  (controllers, services, models, routes, tests, …); `domain` clusters files
+  about the same thing (`user.service.ts`, `users.controller.ts`,
+  `userRepository.ts` → one `user` group) by name similarity.
+- **`--highlight`** colours JS/TS, Python, JSON, Bash, Go, Rust, HTML/XML, CSS,
+  YAML; unknown languages stay plain. Word-level change highlighting shows on
+  top either way. Off by default to keep output minimal.
 
 ```bash
-git diff main...HEAD | npx pocketdiff --highlight -o review.html
-```
-
-`--group` reorganises a sprawling diff by **semantics** instead of folders
-(heuristic, best-effort):
-
-- `layer` — clusters files by architectural role from their names (controllers,
-  services, repositories, models, routes, tests, …), regardless of folder.
-- `domain` — clusters files about the same thing (`user.service.ts`,
-  `users.controller.ts`, `userRepository.ts` → one `user` group) by name
-  similarity.
-
-```bash
-npx pocketdiff --group layer -o review.html origin/main...HEAD
-```
-
-## Examples
-
-All of these write a self-contained `review.html` you can open on any device.
-The URLs below are real, public references you can run as-is — and each one
-edits a markdown file, so the **Diff / Preview** toggle is worth a look.
-
-**GitHub** — paste a PR, commit, or compare *page* URL; pocketdiff maps it to the
-GitHub API diff (works for private repos when `GITHUB_TOKEN`/`GH_TOKEN` is set):
-
-```bash
-# a public commit that edits readme.md (shows the markdown preview)
-npx pocketdiff -o review.html \
-  https://github.com/sindresorhus/awesome/commit/24da1c60ba400087006af9ff02accdb4a53472b6
-
-# a pull request / a compare range
-npx pocketdiff -o review.html https://github.com/owner/repo/pull/42
-npx pocketdiff -o review.html https://github.com/owner/repo/compare/v1.0.0...v1.1.0
-```
-
-**GitLab** — same idea; commit, merge-request, and compare *page* URLs are mapped
-to GitLab's raw `.diff` (gitlab.com **and** self-managed instances, via the `/-/`
-path):
-
-```bash
-# a public commit that edits README.md (shows the markdown preview)
-npx pocketdiff -o review.html \
-  https://gitlab.com/gitlab-org/gitlab-runner/-/commit/9962b4022534a1272a3c610b9fee1c4833aa340c
-
-# a merge request
-npx pocketdiff -o review.html https://gitlab.com/group/project/-/merge_requests/42
-```
-
-**Bitbucket** — commit and pull-request *page* URLs are mapped to the Bitbucket
-Cloud REST API diff:
-
-```bash
-# a public commit that edits a markdown file (shows the markdown preview)
-npx pocketdiff -o review.html \
-  https://bitbucket.org/bitbucketpipelines/pipelines-guide-node/commits/54ccc700920973b83b67717a9859be4ab70eb240
-
-# a pull request
-npx pocketdiff -o review.html https://bitbucket.org/workspace/repo/pull-requests/42
-```
-
-Any other raw `.diff`/`.patch` URL is fetched directly, so hosts pocketdiff
-doesn't special-case still work if you link straight to the diff.
-
-**Local repo** — no network needed; pocketdiff runs `git` for you (or pipe a diff):
-
-```bash
-# current branch vs main
-git diff main...HEAD | npx pocketdiff -o review.html
-
-# a commit range (passed straight to `git diff`)
-npx pocketdiff -o review.html HEAD~3...HEAD
-
-# a single commit — no pipe (`^!` expands to its parent..commit)
-npx pocketdiff -o review.html <sha>^!
-
-# a single commit, piped in (use -m/--first-parent for merge commits)
-git show <sha> | npx pocketdiff -o review.html
-
-# uncommitted working-tree changes (no input at all)
-npx pocketdiff -o review.html
+git diff main...HEAD | npx pocketdiff --highlight --group layer -o review.html
 ```
 
 
@@ -239,13 +193,15 @@ node "$HOME/.claude/skills/pocketdiff/cli.cjs" -o review.html main...HEAD
 
 ```bash
 npm install
-npm test            # unit tests (renderer, grouping, input detection)
-npm run test:visual # browser harness (Playwright, dev-only); needs:
-                    #   npx playwright install chromium
+npm test              # unit tests (renderer, grouping, input detection)
+npm run test:visual   # browser harness (Playwright, dev-only); needs:
+                      #   npx playwright install chromium
+npm run docs:screenshots  # regenerate the README screenshots in docs/
 ```
 
-Playwright is a `devDependency` used only for the browser test harness — it is
-**not** part of the published package (which ships just `bin/` and `src/`).
+Playwright is a `devDependency` used only for the browser test harness and the
+screenshot generator — it is **not** part of the published package (which ships
+just `bin/` and `src/`).
 
 ## License
 
